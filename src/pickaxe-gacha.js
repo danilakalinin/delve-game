@@ -311,7 +311,6 @@ function renderGachaCollection() {
           <div class="gacha-pickaxe-name">${p.name}</div>
           <div class="gacha-pickaxe-rarity">${RARITY_LABEL[p.rarity]}</div>
         </div>
-        <div class="gacha-pickaxe-desc">${p.desc}</div>
         <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
         <div class="gacha-pickaxe-foot"><span>${ownedLabel}</span></div>
       </div>`;
@@ -356,7 +355,6 @@ function renderInventoryCollection() {
           <div class="gacha-pickaxe-name">${p.name}</div>
           <div class="gacha-pickaxe-rarity">${RARITY_LABEL[p.rarity]}</div>
         </div>
-        <div class="gacha-pickaxe-desc">${p.desc}</div>
         <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
         <div class="gacha-pickaxe-foot">
           <span>В инвентаре: x${p.owned}</span>
