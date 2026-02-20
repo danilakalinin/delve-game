@@ -1060,7 +1060,7 @@ function refreshShopButtonState() {
   openShopBtn.textContent = shopOpened ? "🏪 МАГАЗИН" : "🏪 ЗАКРЫТ";
   openShopBtn.title = shopOpened
     ? "Открыть торговую лавку"
-    : `Купи улучшение «Магазин» за ${SHOP_UNLOCK_COST} руды`;
+    : `Купи улучшение «Магазин» за ${SHOP_UNLOCK_COST} меди`;
 }
 
 function refreshEndgameButtons() {
@@ -1136,7 +1136,9 @@ function renderUpgrades() {
       !bought &&
       !lockedByChain &&
       (currency === "gold" ? getGold() >= upg.cost : copperBank >= upg.cost);
-    const costLabel = `${upg.cost} ${currency === "gold" ? "монет" : "руды"}`;
+    const costLabel = upg.id === "shop"
+      ? `${upg.cost} меди`
+      : `${upg.cost} ${currency === "gold" ? "монет" : "руды"}`;
     const lockText =
       upg.id === "td"
         ? "Сначала открой Гильдию шахтеров"
