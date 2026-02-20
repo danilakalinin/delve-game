@@ -3539,3 +3539,266 @@ html, body {
     justify-self: stretch;
   }
 }
+
+/* ─── SHOP RESPONSIVE REWORK ─────────────────────────────── */
+#screen-shop {
+  min-height: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 8px 0 18px;
+}
+
+#screen-shop .shop-layout {
+  width: min(1520px, calc(100vw - 18px));
+  grid-template-columns: minmax(420px, 0.95fr) minmax(540px, 1.15fr);
+  gap: 14px;
+  padding: 12px;
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
+}
+
+#screen-shop .shop-left,
+#screen-shop .shop-right {
+  min-height: 0;
+}
+
+#screen-shop .shop-left {
+  display: grid;
+  grid-template-rows: auto minmax(150px, 1fr) minmax(130px, 0.75fr);
+  gap: 10px;
+}
+
+#screen-shop .shop-right {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(180px, 1fr);
+  gap: 10px;
+}
+
+#screen-shop .shop-log,
+#screen-shop .shop-reviews,
+#screen-shop .shop-flow-body,
+#screen-shop .shop-econ-body,
+#screen-shop .shop-tab-pane .panel {
+  min-height: 0;
+}
+
+#screen-shop .shop-log {
+  min-height: 140px;
+  max-height: none;
+  height: 100%;
+}
+
+#screen-shop .shop-reviews {
+  min-height: 110px;
+  max-height: none;
+  height: 100%;
+}
+
+#screen-shop .shop-econ-panel,
+#screen-shop .shop-flow-panel,
+#screen-shop .shop-upgrades-panel,
+#screen-shop .caravans-panel,
+#screen-shop .shop-reviews-panel,
+#screen-shop .shop-log-panel {
+  min-height: 0;
+}
+
+#screen-shop .shop-econ-body,
+#screen-shop .shop-flow-body {
+  max-height: none;
+  height: 100%;
+  overflow: auto;
+}
+
+#screen-shop .shop-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+#screen-shop .shop-tab-pane {
+  min-height: 0;
+  height: 100%;
+}
+
+#screen-shop .shop-tab-pane > .panel {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+#screen-shop .cc-upgrades-bought,
+#screen-shop .cc-upgrade-available,
+#screen-shop .shop-ads-info,
+#screen-shop #staff-grid,
+#screen-shop .caravans-panel {
+  min-height: 0;
+}
+
+#screen-shop .cc-upgrade-available,
+#screen-shop #staff-grid,
+#screen-shop .caravans-panel {
+  overflow: auto;
+}
+
+#screen-shop .caravans-panel {
+  padding: 10px !important;
+}
+
+#screen-shop .caravans-active-list {
+  max-height: 210px;
+  overflow: auto;
+}
+
+@media (max-width: 1400px) {
+  #screen-shop .shop-layout {
+    width: min(1260px, calc(100vw - 14px));
+    grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  #screen-shop .shop-left {
+    grid-template-rows: auto minmax(130px, 1fr) minmax(100px, 0.65fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  #screen-shop {
+    padding-top: 6px;
+  }
+
+  #screen-shop .shop-layout {
+    width: min(980px, calc(100vw - 10px));
+    grid-template-columns: 1fr;
+    max-height: none;
+    overflow: visible;
+  }
+
+  #screen-shop .shop-left,
+  #screen-shop .shop-right {
+    display: grid;
+    grid-template-rows: none;
+  }
+
+  #screen-shop .shop-log {
+    min-height: 180px;
+    max-height: 300px;
+  }
+
+  #screen-shop .shop-reviews {
+    min-height: 120px;
+    max-height: 220px;
+  }
+
+  #screen-shop .shop-tab-pane > .panel {
+    max-height: none;
+    height: auto;
+  }
+
+  #screen-shop .cc-upgrade-available,
+  #screen-shop #staff-grid,
+  #screen-shop .caravans-panel,
+  #screen-shop .shop-econ-body,
+  #screen-shop .shop-flow-body {
+    overflow: visible;
+  }
+
+  #screen-shop .shop-tab {
+    font-size: 11px;
+    padding: 9px 6px;
+  }
+}
+
+@media (max-width: 860px) {
+  #screen-shop .shop-stats .shop-stat-row {
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  #screen-shop .shop-stat-val {
+    font-size: 13px;
+    text-align: right;
+  }
+
+  #screen-shop .staff-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #screen-shop .caravans-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #screen-shop .caravans-upgrades {
+    grid-template-columns: 1fr;
+  }
+
+  #screen-shop .caravans-route-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #screen-shop .shop-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  #screen-shop .shop-layout {
+    width: calc(100vw - 8px);
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  #screen-shop .panel-header {
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    padding: 6px 8px;
+  }
+
+  #screen-shop .shop-back-btn {
+    font-size: 9px;
+    padding: 2px 7px;
+  }
+
+  #screen-shop .shop-stat-label {
+    font-size: 9px;
+  }
+
+  #screen-shop .shop-stat-val {
+    font-size: 12px;
+  }
+
+  #screen-shop .shop-econ-row,
+  #screen-shop .shop-flow-row {
+    font-size: 11px;
+    padding: 5px 6px;
+  }
+
+  #screen-shop .shop-queue-item {
+    grid-template-columns: 18px 1fr auto;
+    gap: 5px;
+    font-size: 11px;
+  }
+
+  #screen-shop .shop-tab {
+    font-size: 10px;
+    letter-spacing: 0;
+    padding: 8px 4px;
+  }
+
+  #screen-shop .cc-upg-card {
+    grid-template-columns: 40px 1fr;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  #screen-shop .cc-upg-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+}
