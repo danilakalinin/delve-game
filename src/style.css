@@ -34,6 +34,7 @@
   --n2: #44cc66;
   --n3: #ddaa33;
   --n4: #dd4444;
+  --cell-size: 44px;
 
   /* old-school UI stack */
   --retro-font: 'Lucida Console', 'Courier New', Monaco, monospace;
@@ -46,8 +47,10 @@ html, body {
   color: var(--text);
   font-family: 'Trebuchet MS', Verdana, Geneva, sans-serif;
   font-size: 15px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   user-select: none;
+  touch-action: manipulation;
 }
 
 #app {
@@ -267,6 +270,8 @@ html, body {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .status-music-slider {
@@ -2000,12 +2005,14 @@ html, body {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  width: min(1120px, calc(100vw - 16px));
 }
 
 /* ── HUD — горизонтальная панель над сеткой ── */
 #hud {
-  width: 720px;
+  width: min(720px, calc(100vw - 16px));
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   background: linear-gradient(180deg, #18243a 0%, #111a28 100%);
   border: 1px solid var(--border);
@@ -2178,6 +2185,12 @@ html, body {
   border-left: 1px solid var(--border);
 }
 
+.hud-mobile-flag-sec {
+  display: none;
+  padding: 0;
+  min-width: 142px;
+}
+
 .escape-btn {
   height: 100%;
   background: linear-gradient(180deg, #2a1608 0%, #1c1006 100%);
@@ -2200,7 +2213,12 @@ html, body {
 }
 
 /* ─── GRID ────────────────────────────────────────────────── */
-#grid-wrapper { position: relative; }
+#grid-wrapper {
+  position: relative;
+  max-width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
 .game-guide-panel {
   width: 340px;
@@ -2318,13 +2336,13 @@ html, body {
 
 #miner-sprite {
   position: absolute;
-  width: 36px;
-  height: 36px;
-  left: 22px;
-  top: 22px;
+  width: calc(var(--cell-size) * 0.82);
+  height: calc(var(--cell-size) * 0.82);
+  left: calc(var(--cell-size) / 2);
+  top: calc(var(--cell-size) / 2);
   transform: translate(-50%, -50%);
   z-index: 5;
-  font-size: 30px;
+  font-size: calc(var(--cell-size) * 0.68);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2357,8 +2375,8 @@ html, body {
 
 #grid {
   display: grid;
-  grid-template-columns: repeat(15, 44px);
-  grid-template-rows: repeat(15, 44px);
+  grid-template-columns: repeat(15, var(--cell-size));
+  grid-template-rows: repeat(15, var(--cell-size));
   border: 2px solid var(--border-hi);
   outline: 1px solid #0a1020;
   outline-offset: 2px;
@@ -2366,7 +2384,8 @@ html, body {
 }
 
 .cell {
-  width: 44px; height: 44px;
+  width: var(--cell-size);
+  height: var(--cell-size);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2381,7 +2400,8 @@ html, body {
 }
 
 .cell-rock-icon {
-  width: 28px; height: 28px;
+  width: calc(var(--cell-size) * 0.64);
+  height: calc(var(--cell-size) * 0.64);
   object-fit: contain;
   display: block;
   opacity: 0.75;
@@ -2390,7 +2410,8 @@ html, body {
 
 /* Иконка руды на открытой клетке */
 .cell-ore-icon {
-  width: 26px; height: 26px;
+  width: calc(var(--cell-size) * 0.6);
+  height: calc(var(--cell-size) * 0.6);
   object-fit: contain;
   display: block;
   pointer-events: none;
@@ -3962,5 +3983,242 @@ html, body {
 
   .gacha-pickaxe-list {
     grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+/* ─── MOBILE PLAYABILITY ─────────────────────────────────── */
+@media (max-width: 900px) {
+  #screen-start {
+    overflow-y: auto;
+    padding-bottom: 16px;
+  }
+
+  .start-header {
+    padding: 10px 10px 8px;
+    gap: 10px;
+  }
+
+  .start-title {
+    font-size: 22px;
+    letter-spacing: 3px;
+  }
+
+  .start-sub {
+    letter-spacing: 1px;
+  }
+
+  .start-status-bar {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .status-currencies {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .status-bank-group,
+  .status-gold-group {
+    min-width: 110px;
+    flex: 1;
+  }
+
+  .status-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .status-actions .btn-primary,
+  .status-actions .btn-danger {
+    min-height: 36px;
+  }
+
+  .music-value {
+    min-width: 44px;
+  }
+
+  #screen-game {
+    width: 100%;
+    align-items: center;
+    padding: 0 6px 8px;
+  }
+
+  #hud {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .hud-section {
+    min-height: 52px;
+    padding: 6px 10px;
+  }
+
+  .hud-events-sec {
+    flex-basis: 100%;
+    order: 10;
+    border-top: 1px solid var(--border);
+  }
+
+  .hud-mobile-flag-sec {
+    display: flex;
+    border-left: 1px solid var(--border);
+  }
+
+  .game-main-layout {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .game-guide-panel {
+    width: 100%;
+  }
+
+  .result-panel {
+    width: min(380px, calc(100vw - 20px));
+  }
+
+  .commentator {
+    position: static;
+    width: calc(100vw - 12px);
+    margin: 10px auto 8px;
+  }
+
+  #screen-game.active ~ #commentator {
+    position: static;
+    width: calc(100vw - 12px);
+    margin: 8px auto;
+  }
+
+  .td-panel,
+  .gacha-panel {
+    width: calc(100vw - 8px);
+    max-height: none;
+    margin: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  #td-canvas {
+    max-height: none;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --cell-size: min(6.1vw, 36px);
+  }
+
+  #app {
+    justify-content: flex-start;
+  }
+
+  .hud-hp,
+  .hud-ore-sec,
+  .hud-bank-sec,
+  .hud-timer-sec,
+  .hud-diff-sec,
+  .hud-collect-sec,
+  .hud-escape-sec,
+  .hud-mobile-flag-sec {
+    min-width: calc(50% - 1px);
+    flex: 1 1 calc(50% - 1px);
+    border-right: 1px solid var(--border);
+  }
+
+  .hud-collect-sec,
+  .hud-escape-sec,
+  .hud-mobile-flag-sec {
+    min-height: 44px;
+  }
+
+  .collect-ore-btn,
+  .escape-btn {
+    min-height: 44px;
+    font-size: 11px;
+  }
+
+  .hud-big-val {
+    font-size: 17px;
+  }
+
+  .hud-timer {
+    font-size: 18px;
+  }
+
+  .event-warning-hud {
+    white-space: normal;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .game-guide-list {
+    font-size: 12px;
+  }
+
+  .td-top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --cell-size: min(6.15vw, 33px);
+  }
+
+  .start-title {
+    font-size: 19px;
+    letter-spacing: 2px;
+  }
+
+  .status-bank-val,
+  .status-gold-val {
+    font-size: 16px;
+  }
+
+  .status-bank-unit,
+  .status-gold-unit {
+    font-size: 9px;
+  }
+
+  .status-actions {
+    gap: 6px;
+  }
+
+  .status-actions .btn-primary,
+  .status-actions .btn-danger {
+    font-size: 10px;
+    padding: 7px 8px;
+  }
+
+  .status-music-slider {
+    width: 68px;
+  }
+
+  .panel-header {
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 6px 8px;
+  }
+
+  .panel-body {
+    padding: 8px;
+  }
+
+  .upg-label {
+    font-size: 12px;
+  }
+
+  .upg-desc {
+    font-size: 10px;
+  }
+
+  .gacha-actions .btn-primary,
+  .td-btn-row .btn-primary,
+  .td-btn-row .btn-danger {
+    flex: 1;
+    min-width: 120px;
   }
 }

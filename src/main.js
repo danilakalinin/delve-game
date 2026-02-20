@@ -355,6 +355,8 @@ document.getElementById("app").innerHTML = `
         </div>
         <div class="status-actions">
           <button class="shop-open-btn btn-primary" id="open-shop-btn">🏪 МАГАЗИН</button>
+          <button class="shop-open-btn btn-primary" id="open-td-btn">🛡 TD</button>
+          <button class="shop-open-btn btn-primary" id="open-gacha-btn">🎰 ГАЧА</button>
           <button class="music-mute-btn btn-primary" id="music-mute-btn" type="button">🔊</button>
           <input id="music-volume" class="music-slider status-music-slider" type="range" min="0" max="100" step="1" value="55">
           <span class="music-value" id="music-volume-value">55%</span>
@@ -516,6 +518,10 @@ document.getElementById("app").innerHTML = `
       <!-- Кнопка выхода -->
       <div class="hud-section hud-escape-sec">
         <button class="escape-btn btn-danger" id="escape-btn">🚪 УЙТИ</button>
+      </div>
+
+      <div class="hud-section hud-mobile-flag-sec" id="hud-mobile-flag-sec">
+        <button class="collect-ore-btn" id="mobile-flag-toggle-btn">🚩 ФЛАГ: OFF</button>
       </div>
     </div>
 
@@ -684,6 +690,8 @@ const statusGoldGroup = document.getElementById("status-gold-group");
 const statusTicketGroup = document.getElementById("status-ticket-group");
 const ticketDisplay = document.getElementById("ticket-display");
 const openShopBtn = document.getElementById("open-shop-btn");
+const openTdBtn = document.getElementById("open-td-btn");
+const openGachaBtn = document.getElementById("open-gacha-btn");
 const statsContent = document.getElementById("stats-content");
 const helpPanel = document.getElementById("help-panel");
 const helpBtn = document.getElementById("help-btn");
@@ -701,6 +709,7 @@ const hudDiffEl = document.getElementById("hud-diff-val");
 const eventWarnEl = document.getElementById("event-warning");
 const collectOreBtn = document.getElementById("collect-ore-btn");
 const escapeBtn = document.getElementById("escape-btn");
+const mobileFlagToggleBtn = document.getElementById("mobile-flag-toggle-btn");
 const escapeModal = document.getElementById("escape-modal");
 const escapeMsgEl = document.getElementById("escape-modal-text");
 const escapeConfirm = document.getElementById("escape-confirm");
@@ -786,6 +795,7 @@ function refreshStatusBar() {
   if (ticketDisplay && hasTdUnlocked()) {
     ticketDisplay.textContent = String(getTickets());
   }
+  refreshEndgameButtons();
 }
 
 // ─── СОСТОЯНИЕ ────────────────────────────────────────────────────────────────
@@ -801,6 +811,7 @@ let runToolInventory = {};
 let bgMusicStarted = false;
 let runPickaxeEffects = {};
 let runSecondWindUsed = false;
+let mobileFlagMode = false;
 const bgMusic = new Audio(bgMusicSrc);
 bgMusic.loop = true;
 bgMusic.preload = "auto";
@@ -809,6 +820,13 @@ function withRunXp(baseAmount) {
   if (!state) return baseAmount;
   const mult = getDifficultyXpMultiplier(state.diffKey);
   return Math.round(baseAmount * mult);
+}
+
+function getGridCellSize() {
+  if (!gridEl) return 44;
+  const w = gridEl.clientWidth;
+  if (!w) return 44;
+  return w / 15;
 }
 
 function getSavedMusicVolume() {
@@ -987,6 +1005,7 @@ function showStartScreen() {
 
   refreshStatusBar();
   refreshShopButtonState();
+  refreshEndgameButtons();
 
   const DIFF_FLAVOR = {
     easy: { hint: "Меньше руды, меньше угроз. Обвалы небольшие.", mood: "🟢" },
@@ -1029,6 +1048,19 @@ function refreshShopButtonState() {
   openShopBtn.title = shopOpened
     ? "Открыть торговую лавку"
     : `Купи улучшение «Магазин» за ${SHOP_UNLOCK_COST} руды`;
+}
+
+function refreshEndgameButtons() {
+  const tdOpen = hasTdUnlocked();
+  const gachaOpen = hasGachaUnlocked();
+  if (openTdBtn) {
+    openTdBtn.disabled = !tdOpen;
+    openTdBtn.textContent = tdOpen ? "🛡 TD" : "🛡 TD 🔒";
+  }
+  if (openGachaBtn) {
+    openGachaBtn.disabled = !gachaOpen;
+    openGachaBtn.textContent = gachaOpen ? "🎰 ГАЧА" : "🎰 ГАЧА 🔒";
+  }
 }
 
 // ─── УЛУЧШЕНИЯ ────────────────────────────────────────────────────────────────
@@ -1156,6 +1188,7 @@ function renderUpgrades() {
         }
         refreshStatusBar();
         refreshShopButtonState();
+        refreshEndgameButtons();
         renderUpgrades();
         renderStatsPanel();
       });
@@ -1219,6 +1252,7 @@ function startGame(diffKey) {
   state = createGameState(diffKey);
   runPickaxeEffects = getEquippedPickaxeEffects();
   runSecondWindUsed = false;
+  mobileFlagMode = false;
   applyRunPassives();
   state.playerPos = { r: 14, c: 7 };
   state.statsRecorded = false;
@@ -1307,6 +1341,9 @@ function updateHUD() {
     collectOreBtn.textContent = `📥 СБОР РУДЫ (${availableOre})`;
     collectOreBtn.disabled = state.ended || availableOre <= 0;
   }
+  if (mobileFlagToggleBtn) {
+    mobileFlagToggleBtn.textContent = `🚩 ФЛАГ: ${mobileFlagMode ? "ON" : "OFF"}`;
+  }
   updatePlayerIdentityUI();
 }
 
@@ -1344,8 +1381,9 @@ function showCollapsePopup(count) {
 
 function setMinerPosition(r, c, instant = false) {
   if (!minerSprite) return;
-  const x = c * 44 + 22;
-  const y = r * 44 + 22;
+  const cell = getGridCellSize();
+  const x = c * cell + cell / 2;
+  const y = r * cell + cell / 2;
   if (instant) minerSprite.classList.add("instant");
   else minerSprite.classList.remove("instant");
   minerSprite.style.left = `${x}px`;
@@ -1644,6 +1682,24 @@ gridEl.addEventListener("click", (e) => {
   if (!el) return;
   const clickR = parseInt(el.dataset.r, 10);
   const clickC = parseInt(el.dataset.c, 10);
+  if (mobileFlagMode) {
+    const targetCell = state.grid[clickR][clickC];
+    const wasFlagged = targetCell.state === CELL_FLAGGED;
+    const toggled = toggleFlag(state, clickR, clickC);
+    if (toggled) {
+      updateCells(state.grid, gridEl, [toggled]);
+      updateStats((s) => {
+        if (wasFlagged) s.cells.flagsRemoved += 1;
+        else {
+          s.cells.flagsPlaced += 1;
+          if (targetCell.type === TYPE_UNSTABLE) addXp(s, withRunXp(2));
+        }
+      });
+      narrate(wasFlagged ? "flagUnset" : "flagSet");
+      setMinerPosition(clickR, clickC);
+    }
+    return;
+  }
   if (selectedToolId) {
     const tool = getToolById(selectedToolId);
     if (tool?.targeted) {
@@ -1788,6 +1844,11 @@ gridEl.addEventListener("contextmenu", (e) => {
 
 collectOreBtn?.addEventListener("click", () => {
   collectAllAvailableOre();
+});
+
+mobileFlagToggleBtn?.addEventListener("click", () => {
+  mobileFlagMode = !mobileFlagMode;
+  updateHUD();
 });
 
 // ─── ВЫХОД ────────────────────────────────────────────────────────────────────
@@ -2111,6 +2172,14 @@ newRunBtn.addEventListener("click", showStartScreen);
 openShopBtn.addEventListener("click", () => {
   if (!hasShopUnlocked()) return;
   openShopScreen();
+});
+openTdBtn?.addEventListener("click", () => {
+  if (!hasTdUnlocked()) return;
+  openTdScreen();
+});
+openGachaBtn?.addEventListener("click", () => {
+  if (!hasGachaUnlocked()) return;
+  openGachaScreen();
 });
 
 // ─── УТИЛИТЫ ──────────────────────────────────────────────────────────────────
@@ -2870,6 +2939,11 @@ guildNameSaveBtn?.addEventListener("click", () => {
 
 guildNameInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") guildNameSaveBtn?.click();
+});
+
+window.addEventListener("resize", () => {
+  if (!state || !state.playerPos) return;
+  setMinerPosition(state.playerPos.r, state.playerPos.c, true);
 });
 
 if (!getPlayerName()) {
