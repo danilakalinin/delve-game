@@ -3928,34 +3928,76 @@ html, body {
   color: #9eb4c7;
 }
 
-.gacha-reel {
+.gacha-machine {
   margin-top: 8px;
-  border: 1px solid #3f5d74;
-  border-top-color: #6d93b0;
-  background: linear-gradient(180deg, #101a26 0%, #0a121c 100%);
-  color: #d7e8f8;
+  border: 1px solid #476987;
+  border-top-color: #84b7dc;
+  background: radial-gradient(circle at 50% 0%, rgba(95, 158, 210, 0.2) 0%, rgba(11, 19, 29, 0.95) 58%),
+    linear-gradient(180deg, #1a2940 0%, #0d1523 100%);
+  padding: 8px;
+  box-shadow: inset 0 0 28px rgba(120, 180, 230, 0.12), 0 7px 18px rgba(0, 0, 0, 0.38);
+}
+
+.gacha-machine-head {
   font-family: var(--retro-font);
-  font-size: 13px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  min-height: 38px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #f5d283;
+  text-align: center;
+  margin-bottom: 6px;
+  text-shadow: 0 0 9px rgba(245, 210, 131, 0.28);
+}
+
+.gacha-reels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.gacha-reel-window {
+  border: 1px solid #5f82a3;
+  background: linear-gradient(180deg, #0f1a2a 0%, #0a111d 100%);
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 6px 10px;
+  overflow: hidden;
 }
 
-.gacha-reel.rolling {
-  animation: gacha-roll-pulse 0.22s linear infinite;
+.gacha-reel {
+  color: #d7e8f8;
+  font-family: var(--retro-font);
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0 3px;
+  transition: transform 0.16s ease;
+}
+
+.gacha-reel-status {
+  margin-top: 6px;
+  text-align: center;
+  font-family: var(--retro-font);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #b9d2e7;
+}
+
+.gacha-machine.rolling {
+  animation: gacha-roll-pulse 0.2s linear infinite;
+}
+
+.gacha-machine.rolling .gacha-reel {
+  animation: reel-bounce 0.16s linear infinite;
   color: #ffe3a4;
 }
 
-.gacha-reel.landed {
+.gacha-machine.landed {
   animation: gacha-land-flash 0.55s ease;
 }
 
-.gacha-reel.empty {
+.gacha-machine.empty .gacha-reel-status {
   color: #ff9a9a;
 }
 
@@ -3971,6 +4013,11 @@ html, body {
   100% { transform: scale(1); }
 }
 
+@keyframes reel-bounce {
+  0% { transform: translateY(-8%); }
+  100% { transform: translateY(8%); }
+}
+
 .gacha-pickaxe-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3978,7 +4025,7 @@ html, body {
 }
 
 .gacha-pickaxe-card {
-  border: 1px solid #344d61;
+  border: 1px solid rgba(255,255,255,0.08);
   background: #111b28;
   padding: 9px;
   display: flex;
@@ -4026,12 +4073,24 @@ html, body {
 .rarity-legendary { color: #ffd57d; }
 .rarity-ultra { color: #ff8dc2; }
 
-.gacha-pickaxe-card.rarity-common { border-color: #4b5e70; }
-.gacha-pickaxe-card.rarity-uncommon { border-color: #4b8c61; }
-.gacha-pickaxe-card.rarity-rare { border-color: #4371a9; }
-.gacha-pickaxe-card.rarity-epic { border-color: #7956a3; }
-.gacha-pickaxe-card.rarity-legendary { border-color: #9f7f3e; }
-.gacha-pickaxe-card.rarity-ultra { border-color: #9e4d74; }
+.gacha-pickaxe-card.rarity-common {
+  background: linear-gradient(165deg, #2c3641 0%, #1b242f 70%);
+}
+.gacha-pickaxe-card.rarity-uncommon {
+  background: linear-gradient(165deg, #1e3d2a 0%, #162a21 70%);
+}
+.gacha-pickaxe-card.rarity-rare {
+  background: linear-gradient(165deg, #1f3554 0%, #16263f 70%);
+}
+.gacha-pickaxe-card.rarity-epic {
+  background: linear-gradient(165deg, #3a244d 0%, #261a37 70%);
+}
+.gacha-pickaxe-card.rarity-legendary {
+  background: linear-gradient(165deg, #4a351b 0%, #302312 70%);
+}
+.gacha-pickaxe-card.rarity-ultra {
+  background: linear-gradient(165deg, #4f1f39 0%, #331527 70%);
+}
 
 @media (max-width: 980px) {
   .td-top {
@@ -4327,10 +4386,17 @@ html, body {
     width: 100%;
   }
 
+  .gacha-machine-head,
+  .gacha-reel-status {
+    font-size: 10px;
+  }
+
+  .gacha-reel-window {
+    min-height: 36px;
+  }
+
   .gacha-reel {
-    font-size: 11px;
-    min-height: 34px;
-    padding: 5px 8px;
+    font-size: 10px;
   }
 
   .hud-section {

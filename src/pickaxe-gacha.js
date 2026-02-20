@@ -268,11 +268,24 @@ function updateGachaResult(result) {
   bodyEl.textContent = `${result.isNew ? "Новая" : "Повтор"}: ${formatEffects(result.pickaxe.effects)}`;
 }
 
-function setReelText(text, cls = "") {
-  const reel = document.getElementById("gacha-reel");
-  if (!reel) return;
-  reel.className = `gacha-reel ${cls}`.trim();
-  reel.textContent = text;
+function shortName(name) {
+  const parts = name.split(" ");
+  return parts.slice(0, 2).join(" ").toUpperCase();
+}
+
+function setMachineState({ reels, statusText, machineClass = "" }) {
+  const machine = document.getElementById("gacha-machine");
+  const r1 = document.getElementById("gacha-reel-a");
+  const r2 = document.getElementById("gacha-reel-b");
+  const r3 = document.getElementById("gacha-reel-c");
+  const status = document.getElementById("gacha-reel-status");
+  if (!machine || !r1 || !r2 || !r3 || !status) return;
+  machine.className = `gacha-machine ${machineClass}`.trim();
+  const arr = reels?.length ? reels : ["⛏", "⛏", "⛏"];
+  r1.textContent = arr[0] ?? "⛏";
+  r2.textContent = arr[1] ?? "⛏";
+  r3.textContent = arr[2] ?? "⛏";
+  status.textContent = statusText ?? "";
 }
 
 function renderGachaCollection() {
@@ -322,7 +335,17 @@ function renderInventoryCollection() {
     : "Нет экипированной кирки";
   stats.textContent = `Уникальных: ${uniqueOwned}/${PICKAXES.length} • Всего кирок: ${ownedTotal}`;
 
-  mount.innerHTML = inv
+  const owned = inv.filter((p) => p.owned > 0);
+  if (!owned.length) {
+    mount.innerHTML = `
+      <div class="gacha-pickaxe-card rarity-common">
+        <div class="gacha-pickaxe-name">Инвентарь пуст</div>
+        <div class="gacha-pickaxe-desc">Сделай крутки в разделе «Гача», чтобы получить первые кирки.</div>
+      </div>`;
+    return;
+  }
+
+  mount.innerHTML = owned
     .map((p) => {
       const canEquip = p.owned > 0;
       const active = equipped?.id === p.id;
@@ -408,7 +431,15 @@ export function buildGachaScreen() {
             <div class="gacha-last-title" id="gacha-last-title">Последняя крутка</div>
             <div class="gacha-last-body" id="gacha-last-body">Сделай крутку за билет, чтобы получить кирку.</div>
           </div>
-          <div class="gacha-reel" id="gacha-reel">🎰 ГОТОВ К КРУТКЕ</div>
+          <div class="gacha-machine" id="gacha-machine">
+            <div class="gacha-machine-head">CASINO MINE JACKPOT</div>
+            <div class="gacha-reels">
+              <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-a">⛏</div></div>
+              <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-b">⛏</div></div>
+              <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-c">⛏</div></div>
+            </div>
+            <div class="gacha-reel-status" id="gacha-reel-status">ГОТОВ К КРУТКЕ</div>
+          </div>
           <div class="gacha-equipped-line">Экипировано: <span id="gacha-equipped">Нет экипированной кирки</span></div>
         </div>
 
@@ -457,33 +488,55 @@ export function initGachaScreen({ onBack, onStateChanged: onState }) {
     if (rolling) return;
     rolling = true;
     setRollButtonsDisabled(true);
-    setReelText("🎰 БАРАБАНЫ КРУТЯТСЯ...", "rolling");
+    setMachineState({
+      reels: ["КРУТКА", "КРУТКА", "КРУТКА"],
+      statusText: "БАРАБАНЫ КРУТЯТСЯ...",
+      machineClass: "rolling",
+    });
 
     let ticks = 0;
     const spinTimer = setInterval(() => {
       ticks += 1;
-      const p = PICKAXES[Math.floor(Math.random() * PICKAXES.length)];
-      setReelText(`⛏ ${p.name.toUpperCase()} ×${(ticks % 3) + 1}`, "rolling");
+      const p1 = PICKAXES[Math.floor(Math.random() * PICKAXES.length)];
+      const p2 = PICKAXES[Math.floor(Math.random() * PICKAXES.length)];
+      const p3 = PICKAXES[Math.floor(Math.random() * PICKAXES.length)];
+      setMachineState({
+        reels: [shortName(p1.name), shortName(p2.name), shortName(p3.name)],
+        statusText: `СПИН x${count} • ${ticks}`,
+        machineClass: "rolling",
+      });
     }, 70);
 
     await new Promise((resolve) => setTimeout(resolve, count === 1 ? 900 : 1500));
 
     clearInterval(spinTimer);
     let last = null;
+    const got = [];
     for (let i = 0; i < count; i += 1) {
       const result = rollOneInternal();
       if (!result) break;
       last = result;
+      got.push(result);
     }
 
     updateGachaResult(last);
     if (last?.pickaxe) {
-      setReelText(
-        `✨ ${last.pickaxe.name} (${RARITY_LABEL[last.pickaxe.rarity]})`,
-        `${RARITY_CLASS[last.pickaxe.rarity]} landed`,
-      );
+      const top3 = got.slice(-3).map((r) => shortName(r.pickaxe.name));
+      while (top3.length < 3) top3.unshift(shortName(last.pickaxe.name));
+      setMachineState({
+        reels: top3,
+        statusText:
+          count === 1
+            ? `ВЫПАЛА: ${last.pickaxe.name.toUpperCase()}`
+            : `x${got.length} КРУТОК • ЛУЧШАЯ: ${last.pickaxe.name.toUpperCase()}`,
+        machineClass: `${RARITY_CLASS[last.pickaxe.rarity]} landed`,
+      });
     } else {
-      setReelText("❌ НЕТ БИЛЕТОВ ДЛЯ КРУТКИ", "empty");
+      setMachineState({
+        reels: ["НЕТ", "БИЛЕТОВ", "❌"],
+        statusText: "НЕТ БИЛЕТОВ ДЛЯ КРУТКИ",
+        machineClass: "empty",
+      });
     }
     renderGachaScreen();
     renderInventoryScreen();
