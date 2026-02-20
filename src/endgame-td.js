@@ -11,16 +11,9 @@ const PATH_POINTS = [
   { x: 760, y: 160 },
 ];
 
-const TOWER_SLOTS = [
-  { x: 110, y: 150 },
-  { x: 240, y: 220 },
-  { x: 275, y: 55 },
-  { x: 420, y: 210 },
-  { x: 470, y: 340 },
-  { x: 620, y: 250 },
-  { x: 675, y: 95 },
-  { x: 730, y: 265 },
-];
+const TOWER_HIT_RADIUS = 16;
+const TOWER_MIN_GAP = 34;
+const MAP_PADDING = 18;
 
 const TOWER_TYPES = {
   bolt: {
@@ -74,6 +67,7 @@ const state = {
   raf: null,
   lastTs: 0,
   messages: [],
+  hoverPos: null,
 };
 
 let canvas = null;
@@ -84,6 +78,7 @@ let getGoldCb = null;
 let addTicketsCb = null;
 let getTicketsCb = null;
 let onStateChangedCb = null;
+let toastTimer = null;
 
 function notifyStateChanged() {
   if (typeof onStateChangedCb === "function") onStateChangedCb();
@@ -119,7 +114,19 @@ function pushMessage(line, tone = "neutral") {
   const ts = Date.now();
   state.messages.unshift({ line, tone, ts });
   if (state.messages.length > 6) state.messages.length = 6;
+  showInfoToast(line, tone);
   renderHud();
+}
+
+function showInfoToast(line, tone = "neutral") {
+  const toast = document.getElementById("td-float-toast");
+  if (!toast) return;
+  toast.className = `td-float-toast show tone-${tone}`;
+  toast.textContent = line;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.className = "td-float-toast";
+  }, 2200);
 }
 
 function pathPoint(progress) {
@@ -235,22 +242,46 @@ function resetSession() {
   pushMessage("Новая серия TD запущена.", "neutral");
 }
 
-function handleSlotClick(slotIndex) {
-  const tower = state.towers.find((t) => t.slotIndex === slotIndex);
+function getTowerAt(x, y) {
+  return state.towers.find((t) => distance({ x, y }, t) <= TOWER_HIT_RADIUS) ?? null;
+}
+
+function canPlaceTowerAt(x, y) {
+  if (
+    x < MAP_PADDING ||
+    y < MAP_PADDING ||
+    x > 800 - MAP_PADDING ||
+    y > 380 - MAP_PADDING
+  ) {
+    return false;
+  }
+  for (const tower of state.towers) {
+    if (distance({ x, y }, tower) < TOWER_MIN_GAP) return false;
+  }
+  return true;
+}
+
+function handleCanvasClick(x, y) {
+  const tower = getTowerAt(x, y);
   if (!tower) {
     const type = TOWER_TYPES[state.selectedTowerId];
     if (!type) return;
+    if (!canPlaceTowerAt(x, y)) {
+      pushMessage("Слишком близко к краю или другой башне. Выбери свободное место.", "bad");
+      return;
+    }
     if (!canSpendGold(type.cost)) {
       pushMessage(`Не хватает золота: нужно ${type.cost}.`, "bad");
       return;
     }
     state.towers.push({
-      slotIndex,
+      x,
+      y,
       typeId: type.id,
       level: 1,
       cooldownLeft: 0,
     });
-    pushMessage(`${type.label} построена в слоте #${slotIndex + 1} за ${type.cost} золота.`, "neutral");
+    pushMessage(`${type.label} построена за ${type.cost} золота.`, "neutral");
     notifyStateChanged();
     renderHud();
     return;
@@ -263,18 +294,9 @@ function handleSlotClick(slotIndex) {
   }
   tower.level += 1;
   const nextCost = getTowerUpgradeCost(tower);
-  pushMessage(`Слот #${slotIndex + 1}: уровень ${tower.level}. След. апгрейд ${nextCost} золота.`, "neutral");
+  pushMessage(`Башня улучшена до ур. ${tower.level}. След. апгрейд ${nextCost} золота.`, "neutral");
   notifyStateChanged();
   renderHud();
-}
-
-function tryHitSlot(x, y) {
-  for (let i = 0; i < TOWER_SLOTS.length; i += 1) {
-    if (distance({ x, y }, TOWER_SLOTS[i]) <= 18) {
-      handleSlotClick(i);
-      return;
-    }
-  }
 }
 
 function advanceEnemies(dt) {
@@ -303,11 +325,10 @@ function advanceEnemies(dt) {
 }
 
 function acquireTarget(tower, range) {
-  const slot = TOWER_SLOTS[tower.slotIndex];
   let best = null;
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
-    if (distance(slot, enemy) > range) continue;
+    if (distance(tower, enemy) > range) continue;
     if (!best || enemy.progress > best.progress) best = enemy;
   }
   return best;
@@ -325,7 +346,6 @@ function updateTowers(dt) {
     const target = acquireTarget(tower, range);
     if (!target) continue;
 
-    const slot = TOWER_SLOTS[tower.slotIndex];
     const damage = type.damage * lvlMul;
 
     if (type.id === "cannon") {
@@ -345,8 +365,8 @@ function updateTowers(dt) {
     }
 
     state.bullets.push({
-      x1: slot.x,
-      y1: slot.y,
+      x1: tower.x,
+      y1: tower.y,
       x2: target.x,
       y2: target.y,
       t: 0.12,
@@ -402,16 +422,15 @@ function drawPath() {
   ctx.restore();
 }
 
-function drawSlots() {
+function drawTowers() {
   const selectedType = TOWER_TYPES[state.selectedTowerId];
-  for (let i = 0; i < TOWER_SLOTS.length; i += 1) {
-    const slot = TOWER_SLOTS[i];
-    const tower = state.towers.find((t) => t.slotIndex === i);
+  for (const tower of state.towers) {
+    const type = TOWER_TYPES[tower.typeId];
     ctx.save();
-    if (!tower && selectedType) {
+    if (selectedType && tower.typeId === state.selectedTowerId) {
       ctx.beginPath();
       ctx.setLineDash([6, 6]);
-      ctx.arc(slot.x, slot.y, selectedType.range, 0, Math.PI * 2);
+      ctx.arc(tower.x, tower.y, selectedType.range, 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(140, 199, 255, 0.18)";
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -419,30 +438,38 @@ function drawSlots() {
     }
 
     ctx.beginPath();
-    ctx.arc(slot.x, slot.y, 16, 0, Math.PI * 2);
-    if (!tower) {
-      ctx.fillStyle = "#183246";
-      ctx.strokeStyle = "#4f7b96";
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      const type = TOWER_TYPES[tower.typeId];
-      ctx.fillStyle = type.color;
-      ctx.strokeStyle = "#0b1d29";
-      ctx.lineWidth = 2;
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#0d1720";
-      ctx.font = "bold 11px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(String(tower.level), slot.x, slot.y + 4);
-    }
-    ctx.fillStyle = "rgba(205,227,244,0.7)";
-    ctx.font = "10px monospace";
+    ctx.arc(tower.x, tower.y, TOWER_HIT_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = type.color;
+    ctx.strokeStyle = "#0b1d29";
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#0d1720";
+    ctx.font = "bold 11px monospace";
     ctx.textAlign = "center";
-    ctx.fillText(String(i + 1), slot.x, slot.y + 30);
+    ctx.fillText(String(tower.level), tower.x, tower.y + 4);
     ctx.restore();
   }
+
+  if (!selectedType || !state.hoverPos) return;
+  const valid = canPlaceTowerAt(state.hoverPos.x, state.hoverPos.y);
+  ctx.save();
+  ctx.beginPath();
+  ctx.setLineDash([6, 6]);
+  ctx.arc(state.hoverPos.x, state.hoverPos.y, selectedType.range, 0, Math.PI * 2);
+  ctx.strokeStyle = valid ? "rgba(125, 207, 255, 0.22)" : "rgba(255, 130, 130, 0.22)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(state.hoverPos.x, state.hoverPos.y, TOWER_HIT_RADIUS, 0, Math.PI * 2);
+  ctx.fillStyle = valid ? "rgba(125, 207, 255, 0.4)" : "rgba(255, 130, 130, 0.4)";
+  ctx.strokeStyle = valid ? "#7dcfff" : "#ff8282";
+  ctx.lineWidth = 2;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawEnemies() {
@@ -482,7 +509,7 @@ function renderCanvas() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawPath();
-  drawSlots();
+  drawTowers();
   drawEnemies();
   drawBullets();
 }
@@ -535,8 +562,7 @@ function renderHud() {
 
   if (slotInfoEl) {
     const built = state.towers.length;
-    const free = TOWER_SLOTS.length - built;
-    slotInfoEl.textContent = `Слоты: занято ${built}/${TOWER_SLOTS.length} • свободно ${free}`;
+    slotInfoEl.textContent = `Построено башен: ${built} • Наложение запрещено`;
   }
 }
 
@@ -577,7 +603,18 @@ function bindUi() {
     const rect = canvas.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
     const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
-    tryHitSlot(x, y);
+    handleCanvasClick(x, y);
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    state.hoverPos = {
+      x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+    };
+  });
+  canvas.addEventListener("pointerleave", () => {
+    state.hoverPos = null;
   });
 
   document.getElementById("td-start-wave")?.addEventListener("click", () => {
@@ -622,6 +659,10 @@ export function buildTdScreen() {
     <div class="panel td-panel">
       <div class="panel-header"><span class="icon">🛡</span> ШАХТНЫЙ ПОЛИГОН TD</div>
       <div class="panel-body td-layout">
+        <div class="td-atmo-banner">
+          <div class="td-atmo-title">Крепость Лазурного Шпиля</div>
+          <div class="td-atmo-sub">Защити рудный тракт от налетчиков. Волны усиливаются, награда растет.</div>
+        </div>
         <div class="td-top">
           <div>Волна: <strong id="td-wave">0</strong></div>
           <div>База: <strong id="td-base-hp">20</strong></div>
@@ -632,7 +673,11 @@ export function buildTdScreen() {
         </div>
 
         <div class="td-main">
-          <canvas id="td-canvas" width="800" height="380"></canvas>
+          <div class="td-canvas-wrap">
+            <canvas id="td-canvas" width="800" height="380"></canvas>
+            <div class="td-canvas-tip">Ставь башни в любую точку поля. На одно место можно поставить только одну башню.</div>
+            <div class="td-float-toast" id="td-float-toast"></div>
+          </div>
           <div class="td-controls">
             <div class="td-control-block">
               <div class="td-title">Башни (тратят только золото)</div>
@@ -651,8 +696,8 @@ export function buildTdScreen() {
                 </button>
               </div>
               <div class="td-sub">Выбрано: <span id="td-selected-tower">Болтовая (90 золота)</span></div>
-              <div class="td-sub td-quick-guide">Клик по синему слоту: построить. Клик по построенной башне: апгрейд.</div>
-              <div class="td-sub" id="td-slots-info">Слоты: занято 0/8 • свободно 8</div>
+              <div class="td-sub td-quick-guide">Клик по свободной точке: построить. Клик по построенной башне: апгрейд.</div>
+              <div class="td-sub" id="td-slots-info">Построено башен: 0 • Наложение запрещено</div>
               <div class="td-selected-stats">
                 <div class="td-stat-row"><span>Тип</span><strong id="td-selected-name">Болтовая</strong></div>
                 <div class="td-stat-row"><span>Цена</span><strong id="td-selected-cost">90 золота</strong></div>
