@@ -694,10 +694,10 @@ function renderGuildCandidates(state) {
       return `
       <div class="guild-candidate-item">
         <div class="guild-candidate-name">🧑‍🔧 ${c.name}</div>
-        <div class="guild-candidate-stats">⚡${c.stats.speed} · 🛡${c.stats.safety} · ⛏${c.stats.yield}</div>
-        <div class="guild-candidate-meta">Ожидания: ${c.expectedSalary} монет/мин</div>
-        <div class="guild-candidate-meta">Прогноз: ${preview.yieldRange.min}-${preview.yieldRange.max} руды · ${preview.runSec}с · ${(preview.deathChance * 100).toFixed(1)}% риска</div>
-        <button class="guild-mini-btn btn-primary" data-hire-candidate="${c.id}" ${canHire ? "" : "disabled"}>
+        <div class="guild-candidate-stats" title="⚡ Скорость: влияет на время рейса. 🛡 Безопасность: снижает риск гибели. ⛏ Добыча: увеличивает объем и шанс редкой руды.">⚡${c.stats.speed} · 🛡${c.stats.safety} · ⛏${c.stats.yield}</div>
+        <div class="guild-candidate-meta" title="Желаемая зарплата кандидата за минуту">Ожидания: ${c.expectedSalary} монет/мин</div>
+        <div class="guild-candidate-meta" title="Оценка результата на текущей сложности: добыча, время, риск гибели">Прогноз: ${preview.yieldRange.min}-${preview.yieldRange.max} руды · ${preview.runSec}с · ${(preview.deathChance * 100).toFixed(1)}% риска</div>
+        <button class="guild-mini-btn btn-primary" title="Нанять кандидата в бригаду за фиксированную сумму" data-hire-candidate="${c.id}" ${canHire ? "" : "disabled"}>
           Нанять (${hireCost} монет)
         </button>
       </div>`;
@@ -726,25 +726,25 @@ function renderGuildMiners(state) {
       <div class="guild-miner-row">
         <div class="guild-miner-main">
           <span class="guild-miner-name">👷 ${m.name}</span>
-          <span class="guild-miner-eta">ETA: ${fmtTime(m.cooldown)}</span>
-          <span class="guild-miner-mood">🙂 ${Math.round(m.mood)}%</span>
+          <span class="guild-miner-eta" title="Оставшееся время до завершения текущего рейса">ETA: ${fmtTime(m.cooldown)}</span>
+          <span class="guild-miner-mood" title="Настроение влияет на скорость, риск и объем добычи">🙂 ${Math.round(m.mood)}%</span>
         </div>
-        <div class="guild-miner-stats">⚡${m.stats.speed} · 🛡${m.stats.safety} · ⛏${m.stats.yield}</div>
+        <div class="guild-miner-stats" title="⚡ Скорость: быстрее рейс. 🛡 Безопасность: меньше риск гибели. ⛏ Добыча: больше руды и шанс редких типов.">⚡${m.stats.speed} · 🛡${m.stats.safety} · ⛏${m.stats.yield}</div>
         <div class="guild-miner-impact">
-          <span>⏱ Рейс: ${runSec}с</span>
-          <span>☠ Риск: ${(deathChance * 100).toFixed(1)}%</span>
-          <span>📦 Добыча: ${yieldRange.min}-${yieldRange.max}</span>
+          <span title="Среднее время одного рейса с учетом статов">⏱ Рейс: ${runSec}с</span>
+          <span title="Вероятность гибели в одном рейсе">☠ Риск: ${(deathChance * 100).toFixed(1)}%</span>
+          <span title="Прогноз добычи за рейс на текущей сложности">📦 Добыча: ${yieldRange.min}-${yieldRange.max}</span>
         </div>
         <div class="guild-miner-pay">
-          <button class="guild-mini-btn btn-primary" data-salary-miner="${m.id}" data-salary-delta="-1">−</button>
-          <span>${m.salaryPerMin} монет/мин</span>
-          <button class="guild-mini-btn btn-primary" data-salary-miner="${m.id}" data-salary-delta="1">+</button>
+          <button class="guild-mini-btn btn-primary" title="Понизить зарплату (влияет на настроение и эффективность)" data-salary-miner="${m.id}" data-salary-delta="-1">−</button>
+          <span title="Текущая зарплата списывается по завершению рейса">${m.salaryPerMin} монет/мин</span>
+          <button class="guild-mini-btn btn-primary" title="Повысить зарплату (повышает настроение и стабильность)" data-salary-miner="${m.id}" data-salary-delta="1">+</button>
         </div>
         <div class="guild-miner-train">
-          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="speed" ${m.stats.speed >= 8 || (_getSilver && _getSilver() < costSpeed) ? "disabled" : ""}>⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + " монет"}</button>
-          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="safety" ${m.stats.safety >= 8 || (_getSilver && _getSilver() < costSafety) ? "disabled" : ""}>🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + " монет"}</button>
-          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="yield" ${m.stats.yield >= 8 || (_getSilver && _getSilver() < costYield) ? "disabled" : ""}>⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + " монет"}</button>
-          <button class="guild-mini-btn btn-danger" data-fire-miner="${m.id}">Уволить</button>
+          <button class="guild-mini-btn btn-primary" title="Тренировка скорости: рейсы завершаются быстрее" data-train-miner="${m.id}" data-train-stat="speed" ${m.stats.speed >= 8 || (_getSilver && _getSilver() < costSpeed) ? "disabled" : ""}>⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + " монет"}</button>
+          <button class="guild-mini-btn btn-primary" title="Тренировка безопасности: снижает шанс гибели" data-train-miner="${m.id}" data-train-stat="safety" ${m.stats.safety >= 8 || (_getSilver && _getSilver() < costSafety) ? "disabled" : ""}>🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + " монет"}</button>
+          <button class="guild-mini-btn btn-primary" title="Тренировка добычи: повышает объем и качество руды" data-train-miner="${m.id}" data-train-stat="yield" ${m.stats.yield >= 8 || (_getSilver && _getSilver() < costYield) ? "disabled" : ""}>⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + " монет"}</button>
+          <button class="guild-mini-btn btn-danger" title="Уволить шахтера из бригады" data-fire-miner="${m.id}">Уволить</button>
         </div>
       </div>`;
     })
@@ -777,7 +777,7 @@ function renderGuildUpgrades(state) {
           <div class="guild-upg-desc">${u.desc}</div>
           <div class="guild-upg-meta">Уровень: ${lvl}/${u.maxLevel}${maxed ? " · MAX" : ` · ${nextCost} монет`}</div>
         </div>
-        <button class="guild-mini-btn btn-primary" data-buy-guild-upg="${u.id}" ${canBuy ? "" : "disabled"}>
+        <button class="guild-mini-btn btn-primary" title="Купить улучшение гильдии за монеты" data-buy-guild-upg="${u.id}" ${canBuy ? "" : "disabled"}>
           ${maxed ? "MAX" : "Купить"}
         </button>
       </div>`;
@@ -906,33 +906,25 @@ export function buildMinersGuildScreen() {
           </div>
 
           <div class="guild-stats-grid">
-            <div class="guild-stat"><span>Баланс</span><strong id="guild-silver">0</strong></div>
-            <div class="guild-stat"><span>👷 Шахтёры</span><strong id="guild-miners">0/0</strong></div>
-            <div class="guild-stat"><span>🧑‍💼 Нанято</span><strong id="guild-hired">0</strong></div>
-            <div class="guild-stat"><span>☠ Потери</span><strong id="guild-deaths">0</strong></div>
-            <div class="guild-stat"><span>⛏ Добыто</span><strong id="guild-ore-mined">0</strong></div>
-            <div class="guild-stat"><span>🧭 Режим</span><strong id="guild-mode">Средняя</strong></div>
-            <div class="guild-stat"><span>⏱ База рейса</span><strong id="guild-run-time">0с</strong></div>
-            <div class="guild-stat"><span>⚠ База риска</span><strong id="guild-death-risk">0%</strong></div>
-            <div class="guild-stat"><span>🙂 Настроение</span><strong id="guild-mood">0%</strong></div>
-            <div class="guild-stat"><span>💰 Зарплаты</span><strong id="guild-salary-paid">0</strong></div>
+            <div class="guild-stat" title="Доступные монеты для найма, обучения и улучшений"><span>Баланс</span><strong id="guild-silver">0</strong></div>
+            <div class="guild-stat" title="Текущий размер бригады и лимит мест"><span>👷 Шахтёры</span><strong id="guild-miners">0/0</strong></div>
+            <div class="guild-stat" title="Всего нанятых шахтеров за всю игру"><span>🧑‍💼 Нанято</span><strong id="guild-hired">0</strong></div>
+            <div class="guild-stat" title="Сколько шахтеров погибло в рейсах"><span>☠ Потери</span><strong id="guild-deaths">0</strong></div>
+            <div class="guild-stat" title="Общее количество руды, добытое гильдией"><span>⛏ Добыто</span><strong id="guild-ore-mined">0</strong></div>
+            <div class="guild-stat" title="Сложность рейсов, которую ты выбрал"><span>🧭 Режим</span><strong id="guild-mode">Средняя</strong></div>
+            <div class="guild-stat" title="Базовая длительность рейса до бонусов от статов"><span>⏱ База рейса</span><strong id="guild-run-time">0с</strong></div>
+            <div class="guild-stat" title="Базовый риск гибели до бонусов от статов и улучшений"><span>⚠ База риска</span><strong id="guild-death-risk">0%</strong></div>
+            <div class="guild-stat" title="Среднее настроение всех активных шахтеров"><span>🙂 Настроение</span><strong id="guild-mood">0%</strong></div>
+            <div class="guild-stat" title="Сколько монет суммарно выплачено зарплатами"><span>💰 Зарплаты</span><strong id="guild-salary-paid">0</strong></div>
           </div>
 
           <div class="guild-diff-row">
             <span class="guild-label">Сложность рейсов</span>
             <div class="guild-diff-buttons" id="guild-diff-buttons">
-              <button class="guild-mini-btn btn-primary" data-guild-diff="easy">🟢 Лёгкая</button>
-              <button class="guild-mini-btn btn-primary" data-guild-diff="normal">🟡 Средняя</button>
-              <button class="guild-mini-btn btn-primary" data-guild-diff="hard">🔴 Сложная</button>
+              <button class="guild-mini-btn btn-primary" title="Низкий риск и низкая добыча. Для стабильного фарма." data-guild-diff="easy">🟢 Лёгкая</button>
+              <button class="guild-mini-btn btn-primary" title="Сбалансированный режим риска и добычи." data-guild-diff="normal">🟡 Средняя</button>
+              <button class="guild-mini-btn btn-primary" title="Высокий риск и высокая добыча. Для агрессивной игры." data-guild-diff="hard">🔴 Сложная</button>
             </div>
-          </div>
-
-          <div class="guild-stat-help">
-            <div class="guild-help-item"><strong>⚡ Скорость</strong><span>Быстрее завершает рейсы, но может повысить риск.</span></div>
-            <div class="guild-help-item"><strong>🛡 Безопасность</strong><span>Снижает шанс гибели и выравнивает темп.</span></div>
-            <div class="guild-help-item"><strong>⛏ Добыча</strong><span>Даёт больше руды и повышает шанс редких типов.</span></div>
-            <div class="guild-help-item"><strong>🙂 Настроение</strong><span>Влияет на скорость, риск и объём добычи.</span></div>
-            <div class="guild-help-item"><strong>💰 Зарплата</strong><span>Списывается по факту завершения рейса.</span></div>
           </div>
         </div>
       </section>
