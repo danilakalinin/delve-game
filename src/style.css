@@ -1820,6 +1820,16 @@ html, body {
   display: flex;
 }
 
+/* В главном меню комментатор должен быть частью потока, чтобы не перекрывать апгрейды. */
+#screen-start.active ~ #commentator {
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: min(980px, calc(100vw - 20px));
+  margin: 10px auto 14px;
+}
+
 .commentator-rank {
   border: 1px solid #6f8eb6;
   border-top-color: #b7cff0;
@@ -1889,6 +1899,7 @@ html, body {
 /* В самой вылазке уводим комментатора вправо и делаем компактнее,
    чтобы не закрывать игровое поле. */
 #screen-game.active ~ #commentator {
+  position: fixed;
   left: auto;
   right: 14px;
   bottom: 14px;
@@ -2012,7 +2023,7 @@ html, body {
 #hud {
   width: min(720px, calc(100vw - 16px));
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   background: linear-gradient(180deg, #18243a 0%, #111a28 100%);
   border: 1px solid var(--border);
@@ -4041,12 +4052,12 @@ html, body {
   #screen-game {
     width: 100%;
     align-items: center;
-    padding: 0 6px 8px;
+    padding: 0 6px 6px;
   }
 
   #hud {
     width: 100%;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .hud-section {
@@ -4074,22 +4085,15 @@ html, body {
 
   .game-guide-panel {
     width: 100%;
+    display: none;
   }
 
   .result-panel {
     width: min(380px, calc(100vw - 20px));
   }
 
-  .commentator {
-    position: static;
-    width: calc(100vw - 12px);
-    margin: 10px auto 8px;
-  }
-
   #screen-game.active ~ #commentator {
-    position: static;
-    width: calc(100vw - 12px);
-    margin: 8px auto;
+    display: none;
   }
 
   .td-panel,
@@ -4108,54 +4112,104 @@ html, body {
 
 @media (max-width: 768px) {
   :root {
-    --cell-size: min(6.1vw, 36px);
+    --cell-size: min(calc((100vw - 12px) / 15), 34px);
   }
 
   #app {
     justify-content: flex-start;
   }
 
+  #screen-game {
+    padding: 2px 4px 8px;
+  }
+
+  #hud {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    margin-bottom: 4px;
+    border-left: none;
+    border-right: none;
+  }
+
+  .hud-section {
+    min-height: 42px;
+    padding: 4px 6px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hud-section-label,
+  .hud-diff-sec,
+  .hud-events-sec {
+    display: none;
+  }
+
   .hud-hp,
   .hud-ore-sec,
   .hud-bank-sec,
   .hud-timer-sec,
-  .hud-diff-sec,
   .hud-collect-sec,
   .hud-escape-sec,
   .hud-mobile-flag-sec {
-    min-width: calc(50% - 1px);
-    flex: 1 1 calc(50% - 1px);
-    border-right: 1px solid var(--border);
+    min-width: 0;
+    flex: none;
   }
+
+  .hud-hp { grid-column: span 1; }
+  .hud-ore-sec { grid-column: span 1; }
+  .hud-bank-sec { grid-column: span 1; }
+  .hud-timer-sec { grid-column: span 1; }
+  .hud-collect-sec { grid-column: span 2; padding: 0; }
+  .hud-escape-sec { grid-column: span 1; padding: 0; }
+  .hud-mobile-flag-sec { grid-column: span 1; padding: 0; }
 
   .hud-collect-sec,
   .hud-escape-sec,
   .hud-mobile-flag-sec {
-    min-height: 44px;
+    min-height: 38px;
   }
 
   .collect-ore-btn,
   .escape-btn {
-    min-height: 44px;
-    font-size: 11px;
+    min-height: 38px;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    padding: 0 8px;
   }
 
   .hud-big-val {
-    font-size: 17px;
+    font-size: 15px;
   }
 
   .hud-timer {
-    font-size: 18px;
+    font-size: 15px;
   }
 
-  .event-warning-hud {
-    white-space: normal;
-    font-size: 11px;
-    line-height: 1.2;
+  .heart {
+    width: 16px;
+    height: 16px;
   }
 
-  .game-guide-list {
-    font-size: 12px;
+  .hud-ore-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .game-main-layout {
+    width: 100%;
+    gap: 4px;
+  }
+
+  #grid-wrapper {
+    width: 100%;
+    overflow: visible;
+    display: flex;
+    justify-content: center;
+    padding: 0;
   }
 
   .td-top {
@@ -4165,7 +4219,7 @@ html, body {
 
 @media (max-width: 560px) {
   :root {
-    --cell-size: min(6.15vw, 33px);
+    --cell-size: min(calc((100vw - 8px) / 15), 30px);
   }
 
   .start-title {
@@ -4220,5 +4274,26 @@ html, body {
   .td-btn-row .btn-danger {
     flex: 1;
     min-width: 120px;
+  }
+
+  .hud-section {
+    min-height: 36px;
+    padding: 3px 4px;
+  }
+
+  .collect-ore-btn,
+  .escape-btn {
+    min-height: 34px;
+    font-size: 9px;
+  }
+
+  .hud-big-val,
+  .hud-timer {
+    font-size: 13px;
+  }
+
+  .heart {
+    width: 14px;
+    height: 14px;
   }
 }
