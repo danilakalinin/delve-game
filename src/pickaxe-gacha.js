@@ -1,8 +1,8 @@
 const KEY_TICKETS = "delve_td_tickets";
-const KEY_GACHA_OPEN = "delve_gacha_open";
 const KEY_PICKAXE_INV = "delve_pickaxe_inventory_v1";
 const KEY_PICKAXE_EQUIPPED = "delve_pickaxe_equipped_v1";
 const KEY_GACHA_PITY = "delve_gacha_pity_v1";
+const STARTER_TICKETS = 2;
 
 const RARITY_ORDER = {
   common: 1,
@@ -142,7 +142,11 @@ export const PICKAXES = [
     rarity: "legendary",
     weight: 26,
     desc: "+2 HP, +15% к побегу и зачистке.",
-    effects: { extraStartHp: 2, escapeKeepBonus: 0.15, clearBonusBonus: 0.15 },
+    effects: {
+      extraStartHp: 2,
+      escapeKeepBonus: 0.15,
+      clearBonusBonus: 0.15,
+    },
   },
   {
     id: "void_archidrill",
@@ -162,9 +166,17 @@ export const PICKAXES = [
 ];
 
 let onStateChanged = null;
+let rolling = false;
 
 function emitStateChanged() {
   if (typeof onStateChanged === "function") onStateChanged();
+}
+
+function setRollButtonsDisabled(disabled) {
+  const roll1 = document.getElementById("gacha-roll-1");
+  const roll5 = document.getElementById("gacha-roll-5");
+  if (roll1) roll1.disabled = disabled;
+  if (roll5) roll5.disabled = disabled;
 }
 
 function safeParse(json, fallback) {
@@ -256,7 +268,14 @@ function updateGachaResult(result) {
   bodyEl.textContent = `${result.isNew ? "Новая" : "Повтор"}: ${formatEffects(result.pickaxe.effects)}`;
 }
 
-function renderInventory() {
+function setReelText(text, cls = "") {
+  const reel = document.getElementById("gacha-reel");
+  if (!reel) return;
+  reel.className = `gacha-reel ${cls}`.trim();
+  reel.textContent = text;
+}
+
+function renderGachaCollection() {
   const mount = document.getElementById("gacha-pickaxe-list");
   const equippedLabel = document.getElementById("gacha-equipped");
   const tickets = document.getElementById("gacha-tickets");
@@ -272,9 +291,42 @@ function renderInventory() {
 
   mount.innerHTML = inv
     .map((p) => {
+      const ownedLabel = p.owned > 0 ? `x${p.owned}` : "Не получена";
+      return `
+      <div class="gacha-pickaxe-card ${RARITY_CLASS[p.rarity]} ${equipped?.id === p.id ? "active" : ""}">
+        <div class="gacha-pickaxe-head">
+          <div class="gacha-pickaxe-name">${p.name}</div>
+          <div class="gacha-pickaxe-rarity">${RARITY_LABEL[p.rarity]}</div>
+        </div>
+        <div class="gacha-pickaxe-desc">${p.desc}</div>
+        <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
+        <div class="gacha-pickaxe-foot"><span>${ownedLabel}</span></div>
+      </div>`;
+    })
+    .join("");
+}
+
+function renderInventoryCollection() {
+  const mount = document.getElementById("inventory-pickaxe-list");
+  const equippedLabel = document.getElementById("inventory-equipped");
+  const stats = document.getElementById("inventory-stats");
+  if (!mount || !equippedLabel || !stats) return;
+
+  const inv = getOwnedPickaxes();
+  const equipped = getEquippedPickaxe();
+  const ownedTotal = inv.reduce((sum, p) => sum + p.owned, 0);
+  const uniqueOwned = inv.filter((p) => p.owned > 0).length;
+
+  equippedLabel.textContent = equipped
+    ? `${equipped.name} — ${formatEffects(equipped.effects)}`
+    : "Нет экипированной кирки";
+  stats.textContent = `Уникальных: ${uniqueOwned}/${PICKAXES.length} • Всего кирок: ${ownedTotal}`;
+
+  mount.innerHTML = inv
+    .map((p) => {
       const canEquip = p.owned > 0;
       const active = equipped?.id === p.id;
-      const btnLabel = active ? "Экип." : "Экипировать";
+      const btnLabel = active ? "Экипировано" : "Экипировать";
       return `
       <div class="gacha-pickaxe-card ${RARITY_CLASS[p.rarity]} ${active ? "active" : ""}">
         <div class="gacha-pickaxe-head">
@@ -285,16 +337,18 @@ function renderInventory() {
         <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
         <div class="gacha-pickaxe-foot">
           <span>В инвентаре: x${p.owned}</span>
-          <button class="btn-primary gacha-equip-btn" data-pickaxe-id="${p.id}" ${canEquip ? "" : "disabled"}>${btnLabel}</button>
+          <button class="btn-primary gacha-equip-btn" data-inventory-pickaxe-id="${p.id}" ${canEquip ? "" : "disabled"}>${btnLabel}</button>
         </div>
       </div>`;
     })
     .join("");
 
-  mount.querySelectorAll("[data-pickaxe-id]").forEach((btn) => {
+  mount.querySelectorAll("[data-inventory-pickaxe-id]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-pickaxe-id");
+      const id = btn.getAttribute("data-inventory-pickaxe-id");
+      if (!id) return;
       equipPickaxe(id);
+      renderInventoryScreen();
       renderGachaScreen();
       emitStateChanged();
     });
@@ -354,6 +408,7 @@ export function buildGachaScreen() {
             <div class="gacha-last-title" id="gacha-last-title">Последняя крутка</div>
             <div class="gacha-last-body" id="gacha-last-body">Сделай крутку за билет, чтобы получить кирку.</div>
           </div>
+          <div class="gacha-reel" id="gacha-reel">🎰 ГОТОВ К КРУТКЕ</div>
           <div class="gacha-equipped-line">Экипировано: <span id="gacha-equipped">Нет экипированной кирки</span></div>
         </div>
 
@@ -361,6 +416,27 @@ export function buildGachaScreen() {
 
         <div class="gacha-footer-actions">
           <button class="btn-primary" id="gacha-back">← Назад</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+export function buildInventoryScreen() {
+  return `
+  <div id="screen-inventory" class="screen">
+    <div class="panel inventory-panel">
+      <div class="panel-header"><span class="icon">🎒</span> ИНВЕНТАРЬ КИРОК</div>
+      <div class="panel-body inventory-layout">
+        <div class="gacha-main-card">
+          <div class="gacha-equipped-line">Экипировано: <span id="inventory-equipped">Нет экипированной кирки</span></div>
+          <div class="gacha-ticket-line" id="inventory-stats">Уникальных: 0/15 • Всего кирок: 0</div>
+        </div>
+
+        <div class="gacha-pickaxe-list" id="inventory-pickaxe-list"></div>
+
+        <div class="gacha-footer-actions">
+          <button class="btn-primary" id="inventory-back">← Назад</button>
         </div>
       </div>
     </div>
@@ -377,32 +453,76 @@ export function initGachaScreen({ onBack, onStateChanged: onState }) {
     if (typeof onBack === "function") onBack();
   });
 
-  roll1?.addEventListener("click", () => {
-    const result = rollOneInternal();
-    updateGachaResult(result);
-    renderGachaScreen();
-    emitStateChanged();
-  });
+  const spin = async (count) => {
+    if (rolling) return;
+    rolling = true;
+    setRollButtonsDisabled(true);
+    setReelText("🎰 БАРАБАНЫ КРУТЯТСЯ...", "rolling");
 
-  roll5?.addEventListener("click", () => {
+    let ticks = 0;
+    const spinTimer = setInterval(() => {
+      ticks += 1;
+      const p = PICKAXES[Math.floor(Math.random() * PICKAXES.length)];
+      setReelText(`⛏ ${p.name.toUpperCase()} ×${(ticks % 3) + 1}`, "rolling");
+    }, 70);
+
+    await new Promise((resolve) => setTimeout(resolve, count === 1 ? 900 : 1500));
+
+    clearInterval(spinTimer);
     let last = null;
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < count; i += 1) {
       const result = rollOneInternal();
       if (!result) break;
       last = result;
     }
+
     updateGachaResult(last);
+    if (last?.pickaxe) {
+      setReelText(
+        `✨ ${last.pickaxe.name} (${RARITY_LABEL[last.pickaxe.rarity]})`,
+        `${RARITY_CLASS[last.pickaxe.rarity]} landed`,
+      );
+    } else {
+      setReelText("❌ НЕТ БИЛЕТОВ ДЛЯ КРУТКИ", "empty");
+    }
     renderGachaScreen();
+    renderInventoryScreen();
     emitStateChanged();
+    setRollButtonsDisabled(false);
+    rolling = false;
+  };
+
+  roll1?.addEventListener("click", () => {
+    spin(1);
+  });
+
+  roll5?.addEventListener("click", () => {
+    spin(5);
+  });
+}
+
+export function initInventoryScreen({ onBack }) {
+  const back = document.getElementById("inventory-back");
+  back?.addEventListener("click", () => {
+    if (typeof onBack === "function") onBack();
   });
 }
 
 export function renderGachaScreen() {
-  renderInventory();
+  renderGachaCollection();
+}
+
+export function renderInventoryScreen() {
+  renderInventoryCollection();
 }
 
 export function getTickets() {
-  return Math.max(0, parseInt(localStorage.getItem(KEY_TICKETS) ?? "0", 10) || 0);
+  const raw = localStorage.getItem(KEY_TICKETS);
+  if (raw === null) {
+    localStorage.setItem(KEY_TICKETS, String(STARTER_TICKETS));
+    return STARTER_TICKETS;
+  }
+  return Math.max(0, parseInt(raw, 10) || 0);
 }
 
 export function addTickets(amount) {
@@ -417,17 +537,8 @@ export function spendTickets(amount) {
   return true;
 }
 
-export function isGachaOpen() {
-  return localStorage.getItem(KEY_GACHA_OPEN) === "1";
-}
-
-export function openGacha() {
-  localStorage.setItem(KEY_GACHA_OPEN, "1");
-}
-
 export function resetGacha() {
   localStorage.removeItem(KEY_TICKETS);
-  localStorage.removeItem(KEY_GACHA_OPEN);
   localStorage.removeItem(KEY_PICKAXE_INV);
   localStorage.removeItem(KEY_PICKAXE_EQUIPPED);
   localStorage.removeItem(KEY_GACHA_PITY);

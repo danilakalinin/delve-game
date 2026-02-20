@@ -110,8 +110,11 @@ import {
 } from "./endgame-td.js";
 import {
   buildGachaScreen,
+  buildInventoryScreen,
   initGachaScreen,
+  initInventoryScreen,
   renderGachaScreen,
+  renderInventoryScreen,
   getTickets,
   addTickets,
   resetGacha,
@@ -361,6 +364,7 @@ document.getElementById("app").innerHTML = `
           <button class="shop-open-btn btn-primary" id="open-shop-btn">🏪 МАГАЗИН</button>
           <button class="shop-open-btn btn-primary" id="open-td-btn">🛡 TD</button>
           <button class="shop-open-btn btn-primary" id="open-gacha-btn">🎰 ГАЧА</button>
+          <button class="shop-open-btn btn-primary" id="open-inventory-btn">🎒 ИНВЕНТАРЬ</button>
           <button class="music-mute-btn btn-primary" id="music-mute-btn" type="button">🔊</button>
           <input id="music-volume" class="music-slider status-music-slider" type="range" min="0" max="100" step="1" value="55">
           <span class="music-value" id="music-volume-value">55%</span>
@@ -471,6 +475,7 @@ document.getElementById("app").innerHTML = `
   ${buildMinersGuildScreen()}
   ${buildTdScreen()}
   ${buildGachaScreen()}
+  ${buildInventoryScreen()}
 
   <!-- ══ ИГРА ══ -->
   <div id="screen-game" class="screen">
@@ -685,6 +690,7 @@ const screenProspectors = document.getElementById("screen-prospectors");
 const screenGuild = document.getElementById("screen-guild");
 const screenTd = document.getElementById("screen-td");
 const screenGacha = document.getElementById("screen-gacha");
+const screenInventory = document.getElementById("screen-inventory");
 const screenGame = document.getElementById("screen-game");
 const screenResult = document.getElementById("screen-result");
 const diffOptions = document.getElementById("diff-options");
@@ -696,6 +702,7 @@ const ticketDisplay = document.getElementById("ticket-display");
 const openShopBtn = document.getElementById("open-shop-btn");
 const openTdBtn = document.getElementById("open-td-btn");
 const openGachaBtn = document.getElementById("open-gacha-btn");
+const openInventoryBtn = document.getElementById("open-inventory-btn");
 const statsContent = document.getElementById("stats-content");
 const helpPanel = document.getElementById("help-panel");
 const helpBtn = document.getElementById("help-btn");
@@ -1067,6 +1074,10 @@ function refreshEndgameButtons() {
     openGachaBtn.disabled = !gachaOpen;
     openGachaBtn.textContent = gachaOpen ? "🎰 ГАЧА" : "🎰 ГАЧА 🔒";
   }
+  if (openInventoryBtn) {
+    openInventoryBtn.disabled = false;
+    openInventoryBtn.textContent = "🎒 ИНВЕНТАРЬ";
+  }
 }
 
 // ─── УЛУЧШЕНИЯ ────────────────────────────────────────────────────────────────
@@ -1312,6 +1323,11 @@ function openGachaScreen() {
   if (!hasGachaUnlocked()) return;
   renderGachaScreen();
   setActive(screenGacha);
+}
+
+function openInventoryScreen() {
+  renderInventoryScreen();
+  setActive(screenInventory);
 }
 
 // ─── HUD ──────────────────────────────────────────────────────────────────────
@@ -2191,6 +2207,9 @@ openGachaBtn?.addEventListener("click", () => {
   if (!hasGachaUnlocked()) return;
   openGachaScreen();
 });
+openInventoryBtn?.addEventListener("click", () => {
+  openInventoryScreen();
+});
 
 // ─── УТИЛИТЫ ──────────────────────────────────────────────────────────────────
 
@@ -2210,6 +2229,7 @@ function setActive(s) {
     screenGuild,
     screenTd,
     screenGacha,
+    screenInventory,
     screenGame,
     screenResult,
   ].forEach((x) => x.classList.remove("active"));
@@ -2794,7 +2814,13 @@ safeInit("gacha-ui", () =>
       refreshStatusBar();
       renderStatsPanel();
       renderUpgrades();
+      if (screenInventory.classList.contains("active")) renderInventoryScreen();
     },
+  }),
+);
+safeInit("inventory-ui", () =>
+  initInventoryScreen({
+    onBack: showStartScreen,
   }),
 );
 setShopSaleListener(showShopToast);
