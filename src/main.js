@@ -2186,6 +2186,13 @@ function applyRunSettlement() {
     meta.effectiveKeepRate = effectiveKeepRate;
     meta.earlyEscape = earlyEscape;
     setEscapeStreak(escapeStreakBefore + 1);
+  } else if (reason === "death") {
+    // При смерти шахтер теряет всю руду из текущей вылазки.
+    Object.keys(finalOres).forEach((t) => {
+      finalOres[t] = 0;
+    });
+    meta.deathPenalty = true;
+    setEscapeStreak(0);
   } else {
     setEscapeStreak(0);
   }
