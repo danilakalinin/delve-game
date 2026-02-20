@@ -1822,12 +1822,13 @@ html, body {
 
 /* В главном меню комментатор должен быть частью потока, чтобы не перекрывать апгрейды. */
 #screen-start.active ~ #commentator {
-  position: static;
-  left: auto;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
   right: auto;
-  bottom: auto;
+  bottom: 10px;
   width: min(980px, calc(100vw - 20px));
-  margin: 10px auto 14px;
+  margin: 0;
 }
 
 .commentator-rank {
