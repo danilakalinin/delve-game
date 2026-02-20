@@ -3554,83 +3554,40 @@ html, body {
 }
 
 #screen-shop .shop-layout {
-  width: min(1320px, calc(100vw - 18px));
-  grid-template-columns: minmax(370px, 0.92fr) minmax(500px, 1.08fr);
-  gap: 12px;
-  padding: 10px;
-  max-height: calc(100vh - 22px);
-  overflow: hidden;
+  width: min(1220px, calc(100vw - 16px));
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+  gap: 10px;
+  padding: 9px;
+  overflow: visible;
 }
 
 #screen-shop .shop-left,
 #screen-shop .shop-right {
-  min-height: 0;
-}
-
-#screen-shop .shop-left {
-  display: grid;
-  grid-template-rows: auto minmax(150px, 1fr) minmax(130px, 0.75fr);
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-}
-
-#screen-shop .shop-right {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(180px, 1fr);
-  gap: 10px;
-}
-
-#screen-shop .shop-log,
-#screen-shop .shop-reviews,
-#screen-shop .shop-flow-body,
-#screen-shop .shop-econ-body,
-#screen-shop .shop-tab-pane .panel {
-  min-height: 0;
 }
 
 #screen-shop .shop-log {
-  min-height: 140px;
-  max-height: none;
-  height: 100%;
+  min-height: 200px;
+  max-height: 360px;
+  overflow: auto;
 }
 
 #screen-shop .shop-reviews {
-  min-height: 110px;
-  max-height: none;
-  height: 100%;
-}
-
-#screen-shop .shop-econ-panel,
-#screen-shop .shop-flow-panel,
-#screen-shop .shop-upgrades-panel,
-#screen-shop .caravans-panel,
-#screen-shop .shop-reviews-panel,
-#screen-shop .shop-log-panel {
-  min-height: 0;
+  min-height: 140px;
+  max-height: 240px;
+  overflow: auto;
 }
 
 #screen-shop .shop-econ-body,
 #screen-shop .shop-flow-body {
-  max-height: none;
-  height: 100%;
+  max-height: 220px;
   overflow: auto;
 }
 
-#screen-shop .shop-tabs {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-#screen-shop .shop-tab-pane {
-  min-height: 0;
-  height: 100%;
-}
-
 #screen-shop .shop-tab-pane > .panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  max-height: 100%;
+  max-height: 62vh;
   overflow: hidden;
 }
 
@@ -3639,31 +3596,16 @@ html, body {
   flex-direction: column;
 }
 
-#screen-shop .cc-upgrades-bought {
-  flex: 0 0 auto;
-}
-
 #screen-shop .cc-upgrade-available {
-  flex: 1 1 auto;
-  min-height: 170px;
+  min-height: 180px;
+  max-height: 46vh;
   overflow: auto;
 }
 
-#screen-shop .shop-ads-info {
-  flex: 0 0 auto;
-}
-
-#screen-shop .cc-upgrades-bought,
-#screen-shop .cc-upgrade-available,
 #screen-shop .shop-ads-info,
 #screen-shop #staff-grid,
 #screen-shop .caravans-panel {
-  min-height: 0;
-}
-
-#screen-shop .cc-upgrade-available,
-#screen-shop #staff-grid,
-#screen-shop .caravans-panel {
+  max-height: 50vh;
   overflow: auto;
 }
 
@@ -3678,53 +3620,25 @@ html, body {
 
 @media (max-width: 1400px) {
   #screen-shop .shop-layout {
-    width: min(1160px, calc(100vw - 14px));
-    grid-template-columns: minmax(340px, 0.93fr) minmax(410px, 1.03fr);
-    gap: 10px;
-    padding: 9px;
-  }
-
-  #screen-shop .shop-left {
-    grid-template-rows: auto minmax(130px, 1fr) minmax(100px, 0.65fr);
+    width: min(1080px, calc(100vw - 12px));
+    grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr);
   }
 }
 
 @media (max-width: 1180px) {
-  #screen-shop {
-    padding-top: 6px;
-  }
-
   #screen-shop .shop-layout {
     width: min(980px, calc(100vw - 10px));
     grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  #screen-shop .shop-tab-pane > .panel {
     max-height: none;
     overflow: hidden;
   }
 
-  #screen-shop .shop-left,
-  #screen-shop .shop-right {
-    display: grid;
-    grid-template-rows: none;
-  }
-
-  #screen-shop .shop-log {
-    min-height: 180px;
-    max-height: 300px;
-  }
-
-  #screen-shop .shop-reviews {
-    min-height: 120px;
-    max-height: 220px;
-  }
-
-  #screen-shop .shop-tab-pane > .panel {
-    max-height: min(72vh, 640px);
-    height: auto;
-    overflow: hidden;
-  }
-
   #screen-shop .cc-upgrade-available {
-    max-height: min(52vh, 420px);
+    max-height: 52vh;
     overflow: auto;
   }
 
@@ -3732,6 +3646,7 @@ html, body {
   #screen-shop .caravans-panel,
   #screen-shop .shop-econ-body,
   #screen-shop .shop-flow-body {
+    max-height: 42vh;
     overflow: auto;
   }
 
@@ -3831,5 +3746,15 @@ html, body {
     width: 40px;
     height: 40px;
     font-size: 20px;
+  }
+
+  #screen-shop .cc-upgrade-available,
+  #screen-shop #staff-grid,
+  #screen-shop .caravans-panel,
+  #screen-shop .shop-econ-body,
+  #screen-shop .shop-flow-body,
+  #screen-shop .shop-log,
+  #screen-shop .shop-reviews {
+    max-height: 48vh;
   }
 }
