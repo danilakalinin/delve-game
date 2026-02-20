@@ -595,7 +595,7 @@ export function processMinersGuildTick() {
       const salary = applyRunSalary(miner, state);
       payrollSpent += salary.paid;
       if (salary.underpayRatio > 0.25 && eventLines.length < 3) {
-        eventLines.push(`💸 ${miner.name}: недоплата за рейс (${salary.paid}/${salary.expected} 🪙).`);
+        eventLines.push(`💸 ${miner.name}: недоплата за рейс (${salary.paid}/${salary.expected} монет).`);
       }
       if (salary.underpayRatio < 0.15) {
         miner.mood = clamp(miner.mood + 1.2, 0, 100);
@@ -617,7 +617,7 @@ export function processMinersGuildTick() {
   if (oreGained > 0) pushLog(state, `⛏ Бригада добыла ${oreGained} руды за смену.`, "good");
   if (deaths > 0) pushLog(state, `☠ Потери гильдии: ${deaths} шахтёр(ов).`, "bad");
   if (quits > 0) pushLog(state, `🚪 Уволились: ${quits} шахтёр(ов).`, "neutral");
-  if (payrollSpent > 0) pushLog(state, `💰 Выплачено зарплат за рейсы: ${payrollSpent} 🪙.`, "neutral");
+  if (payrollSpent > 0) pushLog(state, `💰 Выплачено зарплат за рейсы: ${payrollSpent} монет.`, "neutral");
 
   saveState(state);
 
@@ -661,7 +661,7 @@ function renderGuildStats(state) {
     : 0;
 
   if (nameEl) nameEl.textContent = state.name || "Безымянная гильдия";
-  if (silverEl) silverEl.textContent = `${_getSilver ? _getSilver() : 0} 🪙 монет`;
+  if (silverEl) silverEl.textContent = `${_getSilver ? _getSilver() : 0} монет`;
   if (modeEl) modeEl.textContent = getDifficultyConfig(state).label;
   if (minersEl) minersEl.textContent = `${state.miners.length}/${getGuildCapacity(state)}`;
   if (hiredEl) hiredEl.textContent = `${state.stats.hiredTotal}`;
@@ -670,7 +670,7 @@ function renderGuildStats(state) {
   if (runSecEl) runSecEl.textContent = `${getEffectiveRunSecBase(state)}с`;
   if (deathEl) deathEl.textContent = `${(getEffectiveDeathChanceBase(state) * 100).toFixed(1)}%`;
   if (moodEl) moodEl.textContent = `${avgMood}%`;
-  if (salaryEl) salaryEl.textContent = `${state.stats.salaryPaidTotal} 🪙`;
+  if (salaryEl) salaryEl.textContent = `${state.stats.salaryPaidTotal} монет`;
 }
 
 function renderGuildCandidates(state) {
@@ -695,10 +695,10 @@ function renderGuildCandidates(state) {
       <div class="guild-candidate-item">
         <div class="guild-candidate-name">🧑‍🔧 ${c.name}</div>
         <div class="guild-candidate-stats">⚡${c.stats.speed} · 🛡${c.stats.safety} · ⛏${c.stats.yield}</div>
-        <div class="guild-candidate-meta">Ожидания: ${c.expectedSalary} 🪙/мин</div>
+        <div class="guild-candidate-meta">Ожидания: ${c.expectedSalary} монет/мин</div>
         <div class="guild-candidate-meta">Прогноз: ${preview.yieldRange.min}-${preview.yieldRange.max} руды · ${preview.runSec}с · ${(preview.deathChance * 100).toFixed(1)}% риска</div>
         <button class="guild-mini-btn btn-primary" data-hire-candidate="${c.id}" ${canHire ? "" : "disabled"}>
-          Нанять (${hireCost} 🪙)
+          Нанять (${hireCost} монет)
         </button>
       </div>`;
     })
@@ -737,13 +737,13 @@ function renderGuildMiners(state) {
         </div>
         <div class="guild-miner-pay">
           <button class="guild-mini-btn btn-primary" data-salary-miner="${m.id}" data-salary-delta="-1">−</button>
-          <span>${m.salaryPerMin} 🪙/мин</span>
+          <span>${m.salaryPerMin} монет/мин</span>
           <button class="guild-mini-btn btn-primary" data-salary-miner="${m.id}" data-salary-delta="1">+</button>
         </div>
         <div class="guild-miner-train">
-          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="speed" ${m.stats.speed >= 8 || (_getSilver && _getSilver() < costSpeed) ? "disabled" : ""}>⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + "🪙"}</button>
-          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="safety" ${m.stats.safety >= 8 || (_getSilver && _getSilver() < costSafety) ? "disabled" : ""}>🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + "🪙"}</button>
-          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="yield" ${m.stats.yield >= 8 || (_getSilver && _getSilver() < costYield) ? "disabled" : ""}>⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + "🪙"}</button>
+          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="speed" ${m.stats.speed >= 8 || (_getSilver && _getSilver() < costSpeed) ? "disabled" : ""}>⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + " монет"}</button>
+          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="safety" ${m.stats.safety >= 8 || (_getSilver && _getSilver() < costSafety) ? "disabled" : ""}>🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + " монет"}</button>
+          <button class="guild-mini-btn btn-primary" data-train-miner="${m.id}" data-train-stat="yield" ${m.stats.yield >= 8 || (_getSilver && _getSilver() < costYield) ? "disabled" : ""}>⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + " монет"}</button>
           <button class="guild-mini-btn btn-danger" data-fire-miner="${m.id}">Уволить</button>
         </div>
       </div>`;
@@ -775,7 +775,7 @@ function renderGuildUpgrades(state) {
         <div class="guild-upg-body">
           <div class="guild-upg-title">${u.label}</div>
           <div class="guild-upg-desc">${u.desc}</div>
-          <div class="guild-upg-meta">Уровень: ${lvl}/${u.maxLevel}${maxed ? " · MAX" : ` · ${nextCost} 🪙`}</div>
+          <div class="guild-upg-meta">Уровень: ${lvl}/${u.maxLevel}${maxed ? " · MAX" : ` · ${nextCost} монет`}</div>
         </div>
         <button class="guild-mini-btn btn-primary" data-buy-guild-upg="${u.id}" ${canBuy ? "" : "disabled"}>
           ${maxed ? "MAX" : "Купить"}
@@ -906,7 +906,7 @@ export function buildMinersGuildScreen() {
           </div>
 
           <div class="guild-stats-grid">
-            <div class="guild-stat"><span>🪙 Баланс</span><strong id="guild-silver">0</strong></div>
+            <div class="guild-stat"><span>Баланс</span><strong id="guild-silver">0</strong></div>
             <div class="guild-stat"><span>👷 Шахтёры</span><strong id="guild-miners">0/0</strong></div>
             <div class="guild-stat"><span>🧑‍💼 Нанято</span><strong id="guild-hired">0</strong></div>
             <div class="guild-stat"><span>☠ Потери</span><strong id="guild-deaths">0</strong></div>

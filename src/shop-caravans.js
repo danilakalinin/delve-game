@@ -294,7 +294,7 @@ function finishCaravan(caravan, state) {
     oreType: caravan.oreType,
     oreAmount: caravan.oreAmount,
     routeId: caravan.routeId,
-    line: `✅ Караван вернулся: +${payout} 🪙 монет.`,
+    line: `✅ Караван вернулся: +${payout} монет.`,
     tone: "good",
   };
 }

@@ -80,7 +80,7 @@ export function buildShopScreen() {
             </div>
             <div class="shop-stat-row">
               <span class="shop-stat-label">Монеты</span>
-              <span class="shop-stat-val gold-color" id="shop-gold-val">0 🪙 монет</span>
+              <span class="shop-stat-val gold-color" id="shop-gold-val">0 монет</span>
             </div>
             <div class="shop-stat-row">
               <span class="shop-stat-label">Посетителей</span>
@@ -88,7 +88,7 @@ export function buildShopScreen() {
             </div>
             <div class="shop-stat-row" id="shop-salary-row" style="display:none">
               <span class="shop-stat-label">Зарплаты</span>
-              <span class="shop-stat-val shop-salary-val" id="shop-salary-val">0 🪙/сек</span>
+              <span class="shop-stat-val shop-salary-val" id="shop-salary-val">0 монет/сек</span>
             </div>
             <div class="shop-stat-row" id="shop-loss-row">
               <span class="shop-stat-label">Потери</span>
@@ -254,7 +254,7 @@ function ensureOreBankGrid(bankGridEl) {
         <img class="shop-ore-bank-icon" src="${ORE_ICONS[oreType]}" draggable="false" alt="">
         <span class="shop-ore-bank-name">${cfg.label}</span>
         <span class="shop-ore-bank-val ore-color-${oreType}" data-ore-val="${oreType}">0</span>
-        <span class="shop-ore-bank-price gold-color">${price}🪙</span>
+        <span class="shop-ore-bank-price gold-color">${price} монет</span>
       </div>`;
   }).join('');
 }
@@ -274,14 +274,14 @@ export function renderShopStats() {
     if (el) el.textContent = getOreBank(oreType);
   });
 
-  if (goldEl) goldEl.textContent = getGold() + ' 🪙 монет';
+  if (goldEl) goldEl.textContent = getGold() + ' монет';
 
   const flow = getShopFlowState();
   if (rateEl) rateEl.textContent = `${flow.expectedArrivalsPerSec.toFixed(2)} / сек`;
 
   const salaryPerSec = getTotalSalaryPerSec();
   if (salaryRowEl) salaryRowEl.style.display = salaryPerSec > 0 ? '' : 'none';
-  if (salaryValEl) salaryValEl.textContent = `−${salaryPerSec.toFixed(2)} 🪙/сек`;
+  if (salaryValEl) salaryValEl.textContent = `−${salaryPerSec.toFixed(2)} монет/сек`;
 
   const loss = getLossRate();
   if (lossValEl) {
@@ -380,10 +380,10 @@ export function renderShopEconomyPanel() {
 
   el.innerHTML = `
     <div class="shop-econ-row"><span>Текущая руда в потоке</span><strong>${oreLabel}</strong></div>
-    <div class="shop-econ-row"><span>Валовый доход</span><strong>${grossPerSec.toFixed(2)} 🪙/сек</strong></div>
-    <div class="shop-econ-row"><span>Потери от утечек</span><strong>−${lossPerSec.toFixed(2)} 🪙/сек</strong></div>
-    <div class="shop-econ-row"><span>Зарплаты штата</span><strong>−${salaryPerSec.toFixed(2)} 🪙/сек</strong></div>
-    <div class="shop-econ-row total"><span>Чистый доход</span><strong>${netPerSec.toFixed(2)} 🪙/сек</strong></div>
+    <div class="shop-econ-row"><span>Валовый доход</span><strong>${grossPerSec.toFixed(2)} монет/сек</strong></div>
+    <div class="shop-econ-row"><span>Потери от утечек</span><strong>−${lossPerSec.toFixed(2)} монет/сек</strong></div>
+    <div class="shop-econ-row"><span>Зарплаты штата</span><strong>−${salaryPerSec.toFixed(2)} монет/сек</strong></div>
+    <div class="shop-econ-row total"><span>Чистый доход</span><strong>${netPerSec.toFixed(2)} монет/сек</strong></div>
     <div class="shop-econ-reasons">
       <div>Причины и бонусы:</div>
       <div>📣 Реклама: ×${adsMult.toFixed(2)} к потоку посетителей</div>
@@ -464,7 +464,7 @@ export function renderShopUpgrades() {
         <div class="cc-upg-name">${u.label}</div>
         <div class="cc-upg-desc">${isNext ? u.desc : '???'}</div>
         <div class="cc-upg-cost ${canBuy ? 'cc-cost-ready' : ''}">
-          ${isNext ? u.cost + ' 🪙 монет' : '—'}
+          ${isNext ? u.cost + ' монет' : '—'}
         </div>
       </div>`;
     if (canBuy) {
@@ -523,14 +523,14 @@ export function renderStaffTab() {
       </div>
       <div class="staff-card-bottom">
         ${lvl > 0
-          ? `<div class="staff-salary">💸 ${salary.toFixed(1)} 🪙/мин</div>`
+          ? `<div class="staff-salary">💸 ${salary.toFixed(1)} монет/мин</div>`
           : `<div class="staff-salary staff-salary-none">Не нанят</div>`}
         <button
           class="staff-hire-btn ${canHire ? 'btn-primary' : ''}"
           data-role="${role.id}"
           ${!canHire && !maxed ? 'disabled' : ''}
         >
-          ${maxed ? '✓ МАК' : `Нанять · ${cost} 🪙`}
+          ${maxed ? '✓ МАК' : `Нанять · ${cost} монет`}
         </button>
       </div>`;
 
@@ -625,7 +625,7 @@ function renderCaravanUpgrades(state) {
       <div class="caravan-upg-card ${maxed ? "maxed" : ""}">
         <div class="caravan-upg-head">${u.icon} ${u.label}</div>
         <div class="caravan-upg-desc">${u.desc}</div>
-        <div class="caravan-upg-meta">Уровень: ${lvl}/${u.maxLevel}${maxed ? " · MAX" : ` · ${cost} 🪙`}</div>
+        <div class="caravan-upg-meta">Уровень: ${lvl}/${u.maxLevel}${maxed ? " · MAX" : ` · ${cost} монет`}</div>
         <button class="caravan-upg-btn btn-primary" data-buy-caravan-upg="${u.id}" ${canBuy ? "" : "disabled"}>
           ${maxed ? "MAX" : "Купить"}
         </button>
@@ -659,9 +659,9 @@ export function renderCaravansTab() {
   summaryEl.innerHTML = `
     <div><span>Рейсов:</span><strong>${state.stats.runsTotal}</strong></div>
     <div><span>Успех:</span><strong>${successRate}%</strong></div>
-    <div><span>Доход:</span><strong>${state.stats.incomeTotal} 🪙</strong></div>
-    <div><span>Расходы:</span><strong>${state.stats.expensesTotal} 🪙</strong></div>
-    <div><span>Лучший профит:</span><strong>${state.stats.bestProfit} 🪙</strong></div>
+    <div><span>Доход:</span><strong>${state.stats.incomeTotal} монет</strong></div>
+    <div><span>Расходы:</span><strong>${state.stats.expensesTotal} монет</strong></div>
+    <div><span>Лучший профит:</span><strong>${state.stats.bestProfit} монет</strong></div>
   `;
   renderCaravanUpgrades(state);
 
@@ -677,11 +677,11 @@ export function renderCaravansTab() {
           <span class="caravan-icon">${route.icon}</span>
           <span class="caravan-name">${route.label}</span>
         </div>
-        <div class="caravan-row"><span>Стоимость отправки</span><strong>${route.dispatchCost} 🪙</strong></div>
+        <div class="caravan-row"><span>Стоимость отправки</span><strong>${route.dispatchCost} монет</strong></div>
         <div class="caravan-row"><span>Время рейса</span><strong>${route.durationSec}с</strong></div>
         <div class="caravan-row"><span>Груз</span><strong>${cargo}/${effective.effectiveCargo}</strong></div>
         <div class="caravan-row"><span>Риск потери</span><strong>${Math.round(effective.effectiveRisk * 100)}%</strong></div>
-        <div class="caravan-row"><span>Ожидаемая выплата</span><strong>${expected} 🪙</strong></div>
+        <div class="caravan-row"><span>Ожидаемая выплата</span><strong>${expected} монет</strong></div>
         <button class="caravan-send-btn btn-primary" data-send-route="${route.id}" ${canSend ? "" : "disabled"}>
           Отправить
         </button>
@@ -731,7 +731,7 @@ function addShopLogEntry({ oreType, oreBought, goldEarned }) {
       ${oreIconSrc ? `<img class="log-ore-icon" src="${oreIconSrc}" draggable="false" alt="">` : ''}
       <span class="ore-color-${oreType ?? 'copper'}">${oreBought} ${oreLabel}</span>
     </span>
-    <span class="log-gold gold-color">+${goldEarned} 🪙 монет</span>`;
+    <span class="log-gold gold-color">+${goldEarned} монет</span>`;
 
   logEl.insertBefore(entry, logEl.firstChild);
   setTimeout(() => entry.classList.remove('shop-log-new'), 600);

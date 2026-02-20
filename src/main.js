@@ -278,7 +278,7 @@ document.getElementById("app").innerHTML = `
             <span class="status-bank-unit">алмазов</span>
           </div>
           <div class="status-gold-group" id="status-gold-group" style="display:none">
-            <span class="status-gold-icon">🪙</span>
+            <span class="status-gold-icon">●</span>
             <span class="status-gold-val" id="gold-display">0</span>
             <span class="status-gold-unit">монет</span>
           </div>
@@ -949,7 +949,7 @@ function renderUpgrades() {
     const canAfford =
       !bought &&
       (currency === "gold" ? getGold() >= upg.cost : copperBank >= upg.cost);
-    const costLabel = `${upg.cost} ${currency === "gold" ? "🪙 монет" : "руды"}`;
+    const costLabel = `${upg.cost} ${currency === "gold" ? "монет" : "руды"}`;
 
     const tile = document.createElement("div");
     tile.className = [
@@ -1995,9 +1995,9 @@ function renderStatsPanel() {
       <div>Успешных/потерь: <strong>${caravan.stats.successTotal}/${caravan.stats.failTotal}</strong></div>
       <div>Успешность: <strong>${caravanSuccessRate}%</strong></div>
       <div>Отправлено руды: <strong>${caravan.stats.oreSentTotal}</strong></div>
-      <div>Доход/расход: <strong>${caravan.stats.incomeTotal}/${caravan.stats.expensesTotal} 🪙</strong></div>
-      <div>Лучший профит: <strong>${caravan.stats.bestProfit} 🪙</strong></div>
-      <div>Потрачено на апгрейды: <strong>${caravan.stats.upgradeSpent} 🪙</strong></div>
+      <div>Доход/расход: <strong>${caravan.stats.incomeTotal}/${caravan.stats.expensesTotal} монет</strong></div>
+      <div>Лучший профит: <strong>${caravan.stats.bestProfit} монет</strong></div>
+      <div>Потрачено на апгрейды: <strong>${caravan.stats.upgradeSpent} монет</strong></div>
     </div>
     <div class="stats-group"><div class="stats-group-title">ОБВАЛЫ И ОПАСНОСТИ</div>
       <div>Всего обвалов: <strong>${s.collapses.total}</strong></div>
@@ -2206,7 +2206,7 @@ function showShopToast({ oreType, oreBought, goldEarned }) {
   ) {
     pushGlobalToast(
       "🏪 Продажа",
-      `-${oreBought} ${oreLabel} • +${goldEarned} 🪙 монет`,
+      `-${oreBought} ${oreLabel} • +${goldEarned} монет`,
       "good",
     );
   }

@@ -230,7 +230,7 @@ function renderConsumables(state) {
         <div class="prospectors-body">
           <div class="prospectors-title">${tool.label}</div>
           <div class="prospectors-desc">${tool.desc}</div>
-          <div class="prospectors-meta">Цена: ${price} 🪙 монет · На складе: ${stock}</div>
+          <div class="prospectors-meta">Цена: ${price} монет · На складе: ${stock}</div>
         </div>
         <button class="prospectors-buy-btn btn-primary" data-buy-tool="${tool.id}" ${canBuy ? "" : "disabled"}>
           Купить (+${gain})
@@ -253,7 +253,7 @@ function renderUpgrades(state) {
         <div class="prospectors-body">
           <div class="prospectors-title">${upg.label}</div>
           <div class="prospectors-desc">${upg.desc}</div>
-          <div class="prospectors-meta">${owned ? "Куплено" : `Цена: ${upg.priceSilver} 🪙 монет`}</div>
+          <div class="prospectors-meta">${owned ? "Куплено" : `Цена: ${upg.priceSilver} монет`}</div>
         </div>
         <button class="prospectors-buy-btn btn-primary" data-buy-upgrade="${upg.id}" ${canBuy ? "" : "disabled"}>
           ${owned ? "✓ Есть" : "Купить"}
@@ -266,7 +266,7 @@ function renderSummary(state) {
   const silverEl = document.getElementById("prospectors-silver");
   const spentEl = document.getElementById("prospectors-spent");
   const boughtEl = document.getElementById("prospectors-bought");
-  if (silverEl) silverEl.textContent = `${_getSilver ? _getSilver() : 0} 🪙 монет`;
+  if (silverEl) silverEl.textContent = `${_getSilver ? _getSilver() : 0} монет`;
   if (spentEl) spentEl.textContent = `${state.spentSilver}`;
   if (boughtEl) boughtEl.textContent = `${state.boughtTools}`;
 }
