@@ -92,10 +92,34 @@ import {
   resetStatsForNewProfile,
   updateStats,
 } from "./stats.js";
+import {
+  buildTdScreen,
+  initTdScreen,
+  isTdOpen,
+  openTd,
+  renderTdScreen,
+  pauseTdScreen,
+  resumeTdScreen,
+  resetTd,
+} from "./endgame-td.js";
+import {
+  buildGachaScreen,
+  initGachaScreen,
+  isGachaOpen,
+  openGacha,
+  renderGachaScreen,
+  getTickets,
+  addTickets,
+  resetGacha,
+  getEquippedPickaxeEffects,
+  getEquippedPickaxeSummary,
+} from "./pickaxe-gacha.js";
 
 // ─── МЕТА-ПРОГРЕССИЯ ──────────────────────────────────────────────────────────
 
 const SHOP_UNLOCK_COST = 50;
+const TD_UNLOCK_COST = 1200;
+const GACHA_UNLOCK_COST = 450;
 const PLAYER_NAME_KEY = "delve_player_name";
 const PLAYER_GENDER_KEY = "delve_player_gender";
 const MUSIC_VOLUME_KEY = "delve_music_volume";
@@ -145,6 +169,8 @@ function resetProgress() {
   resetShop();
   resetStaff();
   resetCaravans();
+  resetTd();
+  resetGacha();
   resetProspectorsClub();
   resetMinersGuild();
   resetShopReviews();
@@ -173,6 +199,14 @@ function hasProspectorsUnlocked() {
 
 function hasGuildUnlocked() {
   return isUpgBought("guild") || isMinersGuildOpen();
+}
+
+function hasTdUnlocked() {
+  return isUpgBought("td") || isTdOpen();
+}
+
+function hasGachaUnlocked() {
+  return isUpgBought("gacha") || isGachaOpen();
 }
 
 function syncShopUnlockState() {
@@ -226,6 +260,12 @@ function getDelveStorageSnapshot() {
     "delve_prospectors_state",
     "delve_guild_open",
     "delve_guild_state",
+    "delve_td_open",
+    "delve_gacha_open",
+    "delve_td_tickets",
+    "delve_pickaxe_inv_v1",
+    "delve_pickaxe_equipped_v1",
+    "delve_gacha_pity_v1",
   ]);
   const out = {};
   for (let i = 0; i < localStorage.length; i += 1) {
@@ -248,9 +288,10 @@ function hasMeaningfulProgress(snapshot) {
   const oreTotal = Object.values(ORE_BANK_KEYS)
     .reduce((sum, k) => sum + parseInt(snapshot[k] ?? "0", 10), 0);
   const gold = parseInt(snapshot.delve_gold ?? "0", 10);
+  const tickets = parseInt(snapshot.delve_td_tickets ?? "0", 10);
   const shopOpen = snapshot.delve_shop_open === "1";
 
-  return upgBought || oreTotal > 0 || gold > 0 || shopOpen;
+  return upgBought || oreTotal > 0 || gold > 0 || tickets > 0 || shopOpen;
 }
 
 function backupProgressSnapshot() {
@@ -305,6 +346,11 @@ document.getElementById("app").innerHTML = `
             <span class="status-gold-icon">●</span>
             <span class="status-gold-val" id="gold-display">0</span>
             <span class="status-gold-unit">монет</span>
+          </div>
+          <div class="status-gold-group" id="status-ticket-group" style="display:none">
+            <span class="status-gold-icon">🎟</span>
+            <span class="status-gold-val" id="ticket-display">0</span>
+            <span class="status-gold-unit">билетов</span>
           </div>
         </div>
         <div class="status-actions">
@@ -417,6 +463,8 @@ document.getElementById("app").innerHTML = `
   ${buildShopScreen()}
   ${buildProspectorsScreen()}
   ${buildMinersGuildScreen()}
+  ${buildTdScreen()}
+  ${buildGachaScreen()}
 
   <!-- ══ ИГРА ══ -->
   <div id="screen-game" class="screen">
@@ -625,12 +673,16 @@ const screenStart = document.getElementById("screen-start");
 const screenShop = document.getElementById("screen-shop");
 const screenProspectors = document.getElementById("screen-prospectors");
 const screenGuild = document.getElementById("screen-guild");
+const screenTd = document.getElementById("screen-td");
+const screenGacha = document.getElementById("screen-gacha");
 const screenGame = document.getElementById("screen-game");
 const screenResult = document.getElementById("screen-result");
 const diffOptions = document.getElementById("diff-options");
 const upgradesGrid = document.getElementById("upgrades-grid");
 const goldDisplay = document.getElementById("gold-display");
 const statusGoldGroup = document.getElementById("status-gold-group");
+const statusTicketGroup = document.getElementById("status-ticket-group");
+const ticketDisplay = document.getElementById("ticket-display");
 const openShopBtn = document.getElementById("open-shop-btn");
 const statsContent = document.getElementById("stats-content");
 const helpPanel = document.getElementById("help-panel");
@@ -727,6 +779,13 @@ function refreshStatusBar() {
   if (goldDisplay && shopUnlocked) {
     goldDisplay.textContent = gold;
   }
+
+  if (statusTicketGroup) {
+    statusTicketGroup.style.display = hasTdUnlocked() ? "" : "none";
+  }
+  if (ticketDisplay && hasTdUnlocked()) {
+    ticketDisplay.textContent = String(getTickets());
+  }
 }
 
 // ─── СОСТОЯНИЕ ────────────────────────────────────────────────────────────────
@@ -740,6 +799,8 @@ let escapeModalOpen = false;
 let selectedToolId = null;
 let runToolInventory = {};
 let bgMusicStarted = false;
+let runPickaxeEffects = {};
+let runSecondWindUsed = false;
 const bgMusic = new Audio(bgMusicSrc);
 bgMusic.loop = true;
 bgMusic.preload = "auto";
@@ -854,12 +915,58 @@ function consumeRunTool(toolId) {
 
 function applyRunPassives() {
   const passives = getProspectorPassiveEffects();
+  const pickaxeFx = runPickaxeEffects ?? {};
   state.diff = { ...state.diff };
   state.diff.startHp = Math.min(
     6,
-    state.diff.startHp + (passives.extraStartHp ?? 0),
+    state.diff.startHp + (passives.extraStartHp ?? 0) + (pickaxeFx.extraStartHp ?? 0),
   );
   state.hp = state.diff.startHp;
+}
+
+function calcOreGainMultiplier() {
+  const fx = runPickaxeEffects ?? {};
+  let bonus = 0;
+  if (fx.doubleOreChance && Math.random() < fx.doubleOreChance) bonus += 1;
+  if (fx.gatherBonusChance && Math.random() < fx.gatherBonusChance) bonus += 1;
+  return 1 + bonus;
+}
+
+function grantRunOre(oreType, baseAmount = 1) {
+  if (!state || baseAmount <= 0) return 0;
+  const t = oreType ?? ORE_COPPER;
+  let granted = 0;
+  for (let i = 0; i < baseAmount; i += 1) {
+    granted += calcOreGainMultiplier();
+  }
+  state.ores[t] = (state.ores[t] ?? 0) + granted;
+  return granted;
+}
+
+function applyStartPickaxeEffects() {
+  const fx = runPickaxeEffects ?? {};
+  if (fx.startOreBonus) {
+    grantRunOre(ORE_COPPER, fx.startOreBonus);
+  }
+  if (!fx.revealOreAtStart || fx.revealOreAtStart <= 0) return;
+  const hiddenOres = [];
+  for (let r = 0; r < state.grid.length; r += 1) {
+    for (let c = 0; c < state.grid[r].length; c += 1) {
+      const cell = state.grid[r][c];
+      if (cell.type === TYPE_ORE && cell.state === CELL_HIDDEN) {
+        hiddenOres.push({ r, c });
+      }
+    }
+  }
+  if (!hiddenOres.length) return;
+  for (let i = hiddenOres.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [hiddenOres[i], hiddenOres[j]] = [hiddenOres[j], hiddenOres[i]];
+  }
+  const toReveal = hiddenOres.slice(0, fx.revealOreAtStart);
+  toReveal.forEach(({ r, c }) => {
+    state.grid[r][c].state = CELL_REVEALED;
+  });
 }
 
 // ─── ГЛАВНОЕ МЕНЮ ─────────────────────────────────────────────────────────────
@@ -910,7 +1017,7 @@ function showStartScreen() {
   runToolInventory = getProspectorInventory();
   renderRunTools();
   setRunToolHint(
-    "Подготовься к вылазке: закупи расходники в «Клубе старателей».",
+    `Кирка: ${getEquippedPickaxeSummary()}. Подготовь расходники в «Клубе старателей».`,
   );
   narrate("openMenu");
 }
@@ -950,6 +1057,22 @@ const UPGRADES_DEF = [
     icon: guildIcon,
     desc: "Найм бригады для пассивной добычи руды.",
   },
+  {
+    id: "td",
+    label: "Полигон TD",
+    cost: TD_UNLOCK_COST,
+    currency: "gold",
+    icon: guildIcon,
+    desc: "Энд-гейм оборона. Тратишь золото, получаешь билеты.",
+  },
+  {
+    id: "gacha",
+    label: "Крутки кирок",
+    cost: GACHA_UNLOCK_COST,
+    currency: "gold",
+    icon: prospectorsIcon,
+    desc: "Трать билеты на кирки разной легендарности.",
+  },
 ];
 
 function renderUpgrades() {
@@ -957,19 +1080,29 @@ function renderUpgrades() {
   const copperBank = getOreBank(ORE_COPPER);
 
   UPGRADES_DEF.forEach((upg) => {
-    const bought =
-      upg.id === "shop"
-        ? hasShopUnlocked()
-        : upg.id === "prospectors"
-          ? hasProspectorsUnlocked()
-          : upg.id === "guild"
-            ? hasGuildUnlocked()
-            : isUpgBought(upg.id);
+    const boughtMap = {
+      shop: hasShopUnlocked(),
+      prospectors: hasProspectorsUnlocked(),
+      guild: hasGuildUnlocked(),
+      td: hasTdUnlocked(),
+      gacha: hasGachaUnlocked(),
+    };
+    const bought = boughtMap[upg.id] ?? isUpgBought(upg.id);
     const currency = upg.currency ?? "ore";
+    const lockedByChain =
+      (upg.id === "td" && !hasGuildUnlocked()) ||
+      (upg.id === "gacha" && !hasTdUnlocked());
     const canAfford =
       !bought &&
+      !lockedByChain &&
       (currency === "gold" ? getGold() >= upg.cost : copperBank >= upg.cost);
     const costLabel = `${upg.cost} ${currency === "gold" ? "монет" : "руды"}`;
+    const lockText =
+      upg.id === "td"
+        ? "Сначала открой Гильдию шахтеров"
+        : upg.id === "gacha"
+          ? "Сначала открой Полигон TD"
+          : "";
 
     const tile = document.createElement("div");
     tile.className = [
@@ -982,8 +1115,8 @@ function renderUpgrades() {
     tile.innerHTML = `
       <img class="upg-icon" src="${upg.icon}" draggable="false" alt="${upg.label}">
       <div class="upg-label">${upg.label}</div>
-      <div class="upg-desc">${bought ? "✓ Куплено" : upg.desc}</div>
-      <div class="upg-cost ${bought ? "hidden" : canAfford ? "upg-cost-ready" : ""}">${costLabel}</div>
+      <div class="upg-desc">${bought ? "✓ Куплено" : lockedByChain ? lockText : upg.desc}</div>
+      <div class="upg-cost ${bought ? "hidden" : canAfford ? "upg-cost-ready" : ""}">${lockedByChain ? "🔒 Заблокировано" : costLabel}</div>
       ${bought
         ? `<button class="upg-action-btn upg-open-btn">Открыть</button>`
         : canAfford
@@ -1016,6 +1149,10 @@ function renderUpgrades() {
         } else if (upg.id === "guild") {
           openMinersGuild();
           if (!getMinersGuildName()) openGuildNameModal(true);
+        } else if (upg.id === "td") {
+          openTd();
+        } else if (upg.id === "gacha") {
+          openGacha();
         }
         refreshStatusBar();
         refreshShopButtonState();
@@ -1031,6 +1168,12 @@ function renderUpgrades() {
     } else if (upg.id === "guild") {
       tile.style.cursor = "pointer";
       tile.addEventListener("click", openGuildScreen);
+    } else if (upg.id === "td") {
+      tile.style.cursor = "pointer";
+      tile.addEventListener("click", openTdScreen);
+    } else if (upg.id === "gacha") {
+      tile.style.cursor = "pointer";
+      tile.addEventListener("click", openGachaScreen);
     }
 
     upgradesGrid.appendChild(tile);
@@ -1074,6 +1217,8 @@ resetCancel.addEventListener("click", () => {
 
 function startGame(diffKey) {
   state = createGameState(diffKey);
+  runPickaxeEffects = getEquippedPickaxeEffects();
+  runSecondWindUsed = false;
   applyRunPassives();
   state.playerPos = { r: 14, c: 7 };
   state.statsRecorded = false;
@@ -1084,6 +1229,7 @@ function startGame(diffKey) {
   idleTriggered = false;
   selectedToolId = null;
   runToolInventory = getProspectorInventory();
+  applyStartPickaxeEffects();
   renderGrid(state.grid, gridEl);
   setMinerPosition(state.playerPos.r, state.playerPos.c, true);
   minerSprite.classList.remove("dead");
@@ -1129,6 +1275,18 @@ function openGuildScreen() {
   if (!hasGuildUnlocked()) return;
   renderMinersGuildScreen();
   setActive(screenGuild);
+}
+
+function openTdScreen() {
+  if (!hasTdUnlocked()) return;
+  renderTdScreen();
+  setActive(screenTd);
+}
+
+function openGachaScreen() {
+  if (!hasGachaUnlocked()) return;
+  renderGachaScreen();
+  setActive(screenGacha);
 }
 
 // ─── HUD ──────────────────────────────────────────────────────────────────────
@@ -1229,16 +1387,16 @@ function uniqueCells(cells) {
   return out;
 }
 
-function applyToolGridChanges(changed, oreGain = 0, hpGain = 0) {
+function applyToolGridChanges(changed, oreGain = 0, hpGain = 0, oreType = ORE_COPPER) {
   if (!state) return;
   const uniq = uniqueCells(changed);
   if (uniq.length) updateCells(state.grid, gridEl, uniq);
   if (oreGain > 0) {
-    state.ore += oreGain;
+    const gained = grantRunOre(oreType, oreGain);
     updateStats((s) => {
-      s.cells.oreFoundCells += oreGain;
-      s.resources.totalOreMined += oreGain;
-      addXp(s, withRunXp(Math.max(1, Math.round(oreGain * 0.8))));
+      s.cells.oreFoundCells += gained;
+      s.resources.totalOreMined += gained;
+      addXp(s, withRunXp(Math.max(1, Math.round(gained * 0.8))));
     });
   }
   if (hpGain > 0) state.hp = Math.min(state.diff.startHp, state.hp + hpGain);
@@ -1264,14 +1422,20 @@ function useInstantTool(toolId) {
 
   if (toolId === "magnet") {
     const changed = [];
-    let oreGain = 0;
+    const oreByType = {
+      [ORE_COPPER]: 0,
+      [ORE_SILVER]: 0,
+      [ORE_GOLD]: 0,
+      [ORE_DIAMOND]: 0,
+    };
     for (let r = 0; r < state.grid.length; r++) {
       for (let c = 0; c < state.grid[r].length; c++) {
         const cell = state.grid[r][c];
         if (cell.type === TYPE_ORE && cell.state === CELL_REVEALED) {
+          const oreType = cell.oreType ?? ORE_COPPER;
           cell.type = TYPE_EMPTY;
           cell.state = CELL_OPEN;
-          oreGain += 1;
+          oreByType[oreType] += 1;
           changed.push({ r, c });
           for (const [nr, nc] of getNeighbors(r, c)) {
             if (state.grid[nr][nc].state === CELL_OPEN)
@@ -1280,6 +1444,7 @@ function useInstantTool(toolId) {
         }
       }
     }
+    const oreGain = Object.values(oreByType).reduce((s, v) => s + v, 0);
     if (oreGain <= 0) {
       setRunToolHint("🧲 Нет подсвеченной руды для сбора.");
       return false;
@@ -1287,8 +1452,17 @@ function useInstantTool(toolId) {
     if (!consumeRunTool(toolId)) return false;
     computeNeighborCounts(state.grid);
     changed.push(...revealAdjacentOre(state.grid));
-    applyToolGridChanges(changed, oreGain, 0);
-    setRunToolHint(`🧲 Магнит собрал ${oreGain} руды.`);
+    let totalGranted = 0;
+    Object.entries(oreByType).forEach(([oreType, amount]) => {
+      if (amount > 0) totalGranted += grantRunOre(oreType, amount);
+    });
+    applyToolGridChanges(changed, 0, 0);
+    updateStats((s) => {
+      s.cells.oreFoundCells += totalGranted;
+      s.resources.totalOreMined += totalGranted;
+      addXp(s, withRunXp(Math.max(1, Math.round(totalGranted * 0.8))));
+    });
+    setRunToolHint(`🧲 Магнит собрал ${totalGranted} руды.`);
     animateMiner("pickup");
     return true;
   }
@@ -1409,7 +1583,7 @@ function checkIdle() {
   if (!state || state.ended) return;
   if (escapeModalOpen) return;
   const idleSec = (Date.now() - state.lastActionTime) / 1000;
-  const threshold = state.diff.idleCollapseSec;
+  const threshold = state.diff.idleCollapseSec + (runPickaxeEffects.idleCollapseDelaySec ?? 0);
   const secsLeft = Math.ceil(threshold - idleSec);
 
   if (idleSec >= threshold && !idleTriggered) {
@@ -1489,7 +1663,12 @@ gridEl.addEventListener("click", (e) => {
   if (!result) return;
   setMinerPosition(clickR, clickC);
 
-  const gained = state.ore - prevOre;
+  let gained = state.ore - prevOre;
+  if (gained > 0) {
+    const oreType = result.collectedOreType ?? ORE_COPPER;
+    const extra = grantRunOre(oreType, gained) - gained;
+    if (extra > 0) gained += extra;
+  }
   const newlyOpened = countNewlyOpenedCells(prevStates);
   const emptyOpened = countNewlyOpenedEmptyCells(prevStates);
   const newlyRevealedOre = countNewlyRevealedOre(prevStates);
@@ -1560,6 +1739,17 @@ gridEl.addEventListener("click", (e) => {
 
   updateHUD();
   if (state.hp <= 0) {
+    if (!runSecondWindUsed && runPickaxeEffects.secondWindChance) {
+      if (Math.random() < runPickaxeEffects.secondWindChance) {
+        runSecondWindUsed = true;
+        state.hp = 1;
+        showHudWarning("🛡 Кирка спасла от смертельного удара!");
+        clearTimeout(showHudWarning._t);
+        showHudWarning._t = setTimeout(hideHudWarning, 2200);
+        updateHUD();
+        return;
+      }
+    }
     minerSprite.classList.add("dead");
     screenGame.classList.add("screen-death-flash");
     narrate("death");
@@ -1619,7 +1809,7 @@ escapeBtn.addEventListener("click", () => {
   const baseKeep = ESCAPE_KEEP_BASE[state.diffKey] ?? 0.20;
   const keepBeforeQuality = Math.max(
     ESCAPE_KEEP_MIN,
-    baseKeep - streak * ESCAPE_STREAK_KEEP_PENALTY,
+    baseKeep - streak * ESCAPE_STREAK_KEEP_PENALTY + (runPickaxeEffects.escapeKeepBonus ?? 0),
   );
   const earlyEscape = coverage < EARLY_ESCAPE_MIN_COVERAGE;
   const effectiveKeep = earlyEscape ? 0 : keepBeforeQuality * quality;
@@ -1872,6 +2062,7 @@ function applyRunSettlement() {
   const reason = state.endReason;
   const { quality, coverage } = calcRunQuality(state);
   const escapeStreakBefore = getEscapeStreak();
+  const pickaxeFx = runPickaxeEffects ?? {};
 
   let finalOres = cloneOreMap(raw);
   const meta = {
@@ -1881,7 +2072,7 @@ function applyRunSettlement() {
   };
 
   if (reason === "clear") {
-    const bonus = CLEAR_BONUS_MULT[state.diffKey] ?? 0.20;
+    const bonus = (CLEAR_BONUS_MULT[state.diffKey] ?? 0.20) + (pickaxeFx.clearBonusBonus ?? 0);
     Object.keys(finalOres).forEach((t) => {
       finalOres[t] = Math.round(finalOres[t] * (1 + bonus));
     });
@@ -1890,7 +2081,10 @@ function applyRunSettlement() {
   } else if (reason === "escape") {
     const baseKeep = ESCAPE_KEEP_BASE[state.diffKey] ?? 0.20;
     const streakPenalty = escapeStreakBefore * ESCAPE_STREAK_KEEP_PENALTY;
-    const keepBeforeQuality = Math.max(ESCAPE_KEEP_MIN, baseKeep - streakPenalty);
+    const keepBeforeQuality = Math.max(
+      ESCAPE_KEEP_MIN,
+      baseKeep - streakPenalty + (pickaxeFx.escapeKeepBonus ?? 0),
+    );
     const earlyEscape = coverage < EARLY_ESCAPE_MIN_COVERAGE;
     const effectiveKeepRate = earlyEscape ? 0 : Math.max(0, keepBeforeQuality * quality);
 
@@ -1928,11 +2122,15 @@ function formatTime(s) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 function setActive(s) {
+  if (s !== screenTd) pauseTdScreen();
+  if (s === screenTd) resumeTdScreen();
   [
     screenStart,
     screenShop,
     screenProspectors,
     screenGuild,
+    screenTd,
+    screenGacha,
     screenGame,
     screenResult,
   ].forEach((x) => x.classList.remove("active"));
@@ -1988,7 +2186,7 @@ function collectAllAvailableOre() {
       cell.type = TYPE_EMPTY;
       cell.oreType = null;
       cell.state = CELL_OPEN;
-      state.ores[oreType] = (state.ores[oreType] ?? 0) + 1;
+      grantRunOre(oreType, 1);
       changed.push({ r, c });
 
       for (const [nr, nc] of getNeighbors(r, c)) {
@@ -2466,6 +2664,42 @@ safeInit("guild-ui", () => initMinersGuildScreen({
     if (screenGuild.classList.contains("active")) renderMinersGuildScreen();
   },
   onRequestRename: () => openGuildNameModal(false),
+}));
+safeInit("td-ui", () => initTdScreen({
+  onBack: showStartScreen,
+  getGold,
+  spendGold: (amount) => {
+    const ok = spendGold(amount);
+    if (!ok) return false;
+    updateStats((s) => {
+      s.resources.goldSpent += amount;
+      addXp(s, 6);
+    });
+    refreshStatusBar();
+    renderUpgrades();
+    return true;
+  },
+  addTickets: (amount) => {
+    addTickets(amount);
+    updateStats((s) => {
+      addXp(s, Math.max(2, amount * 3));
+    });
+    refreshStatusBar();
+  },
+  getTickets,
+  onStateChanged: () => {
+    refreshStatusBar();
+    renderStatsPanel();
+    renderUpgrades();
+  },
+}));
+safeInit("gacha-ui", () => initGachaScreen({
+  onBack: showStartScreen,
+  onStateChanged: () => {
+    refreshStatusBar();
+    renderStatsPanel();
+    renderUpgrades();
+  },
 }));
 setShopSaleListener(showShopToast);
 setAdPurchaseListener((cost) => {
