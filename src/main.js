@@ -14,7 +14,6 @@ import {
   revealAdjacentOre,
   toggleFlag,
   triggerIdleCollapse,
-  escapeRun,
   checkVictory,
   DIFFICULTIES,
 } from "./game.js";
@@ -103,8 +102,23 @@ const MUSIC_VOLUME_KEY = "delve_music_volume";
 const MUSIC_MUTED_KEY = "delve_music_muted";
 const SAVE_BACKUP_KEY = "delve_backup_v1";
 const RESET_STAMP_KEY = "delve_last_reset_at";
+const ESCAPE_STREAK_KEY = "delve_escape_streak_v1";
 let runtimePlayerName = "";
 let runtimePlayerGender = "male";
+
+const ESCAPE_KEEP_BASE = {
+  easy: 0.10,
+  normal: 0.20,
+  hard: 0.35,
+};
+const ESCAPE_KEEP_MIN = 0.05;
+const ESCAPE_STREAK_KEEP_PENALTY = 0.05;
+const EARLY_ESCAPE_MIN_COVERAGE = 0.12;
+const CLEAR_BONUS_MULT = {
+  easy: 0.10,
+  normal: 0.25,
+  hard: 0.45,
+};
 
 // Совместимость: total ore across all banks
 function getBank() {
@@ -135,8 +149,18 @@ function resetProgress() {
   resetMinersGuild();
   resetShopReviews();
   localStorage.removeItem("delve_shop_open");
+  localStorage.removeItem(ESCAPE_STREAK_KEY);
   localStorage.removeItem(SAVE_BACKUP_KEY);
   localStorage.setItem(RESET_STAMP_KEY, new Date().toISOString());
+}
+
+function getEscapeStreak() {
+  const v = parseInt(localStorage.getItem(ESCAPE_STREAK_KEY) ?? "0", 10);
+  return Number.isNaN(v) ? 0 : Math.max(0, v);
+}
+
+function setEscapeStreak(v) {
+  localStorage.setItem(ESCAPE_STREAK_KEY, String(Math.max(0, Math.floor(v))));
 }
 
 function hasShopUnlocked() {
@@ -836,10 +860,6 @@ function applyRunPassives() {
     state.diff.startHp + (passives.extraStartHp ?? 0),
   );
   state.hp = state.diff.startHp;
-  state.diff.escapeOreLoss = Math.max(
-    0.05,
-    state.diff.escapeOreLoss * (passives.escapeLossMultiplier ?? 1),
-  );
 }
 
 // ─── ГЛАВНОЕ МЕНЮ ─────────────────────────────────────────────────────────────
@@ -874,11 +894,11 @@ function showStartScreen() {
     const btn = document.createElement("button");
     btn.className = "time-option";
     const f = DIFF_FLAVOR[key];
-    const lossPct = Math.round(d.escapeOreLoss * 100);
+    const keepPct = Math.round((ESCAPE_KEEP_BASE[key] ?? 0.2) * 100);
     btn.innerHTML = `
       <span class="opt-dur">${f.mood} ${d.label}</span>
       <span class="opt-desc">${f.hint}</span>
-      <span class="opt-collapse">HP: ${d.startHp} · при побеге теряешь ${lossPct}% руды</span>`;
+      <span class="opt-collapse">HP: ${d.startHp} · при побеге базово сохраняешь ${keepPct}% руды</span>`;
     btn.addEventListener("click", () => startGame(key));
     diffOptions.appendChild(btn);
   });
@@ -1058,6 +1078,9 @@ function startGame(diffKey) {
   state.playerPos = { r: 14, c: 7 };
   state.statsRecorded = false;
   state.bankSettled = false;
+  state.rawOres = null;
+  state.rewardMeta = null;
+  state.settlementApplied = false;
   idleTriggered = false;
   selectedToolId = null;
   runToolInventory = getProspectorInventory();
@@ -1590,14 +1613,27 @@ escapeBtn.addEventListener("click", () => {
     collapsePopup.classList.remove("popup-hide");
   }, 300);
 
-  const lossPct = Math.round(state.diff.escapeOreLoss * 100);
   const totalOre = state.ore;
-  const willLoseTotal = Math.round(totalOre * state.diff.escapeOreLoss);
-  const willKeepTotal = totalOre - willLoseTotal;
+  const { quality, coverage } = calcRunQuality(state);
+  const streak = getEscapeStreak();
+  const baseKeep = ESCAPE_KEEP_BASE[state.diffKey] ?? 0.20;
+  const keepBeforeQuality = Math.max(
+    ESCAPE_KEEP_MIN,
+    baseKeep - streak * ESCAPE_STREAK_KEEP_PENALTY,
+  );
+  const earlyEscape = coverage < EARLY_ESCAPE_MIN_COVERAGE;
+  const effectiveKeep = earlyEscape ? 0 : keepBeforeQuality * quality;
+  const willKeepTotal = Math.floor(totalOre * effectiveKeep);
+  const willLoseTotal = totalOre - willKeepTotal;
   escapeMsgEl.innerHTML = `
     <p>Уйти с вылазки досрочно?</p>
-    <p class="modal-warn">Потеряешь <strong>${lossPct}%</strong> руды — <strong>${willLoseTotal} ед.</strong></p>
+    <p class="modal-warn">Потеряешь <strong>${willLoseTotal} ед.</strong> руды.</p>
     <p class="modal-keep">Сохранишь: <strong>${willKeepTotal} ед.</strong></p>`;
+  if (earlyEscape) {
+    escapeMsgEl.innerHTML += `<p class="modal-warn">Слишком ранний выход: прогресс рейса <strong>${Math.round(coverage * 100)}%</strong> (нужно минимум ${Math.round(EARLY_ESCAPE_MIN_COVERAGE * 100)}%).</p>`;
+  } else {
+    escapeMsgEl.innerHTML += `<p>Качество рейса: <strong>${Math.round(quality * 100)}%</strong> · Серия побегов: <strong>${streak}</strong></p>`;
+  }
   escapeModal.style.display = "flex";
   escapeModalOpen = true;
 });
@@ -1606,10 +1642,8 @@ escapeConfirm.addEventListener("click", () => {
   escapeModal.style.display = "none";
   escapeModalOpen = false;
   if (!state || state.ended) return;
-  escapeRun(state);
   narrate("escape");
-  stopTimers();
-  showResult();
+  endGame("escape");
 });
 
 escapeCancel.addEventListener("click", () => {
@@ -1623,6 +1657,7 @@ escapeCancel.addEventListener("click", () => {
 function endGame(reason) {
   state.ended = true;
   state.endReason = reason;
+  applyRunSettlement();
   stopTimers();
   showResult();
 }
@@ -1643,7 +1678,10 @@ function showResult() {
     });
     state.bankSettled = true;
   }
-  const ore = state.ore; // total (getter)
+  const ore = state.ore; // total after settlement
+  const rawOre = state.rawOres
+    ? Object.values(state.rawOres).reduce((s, v) => s + v, 0)
+    : ore;
   const hp = Math.max(0, state.hp);
   const bank = getBank(); // total across all types
   const diffKey = state.diffKey;
@@ -1717,7 +1755,8 @@ function showResult() {
     }));
 
   const rows = [
-    { label: "Добыто за вылазку", val: `${ore} ед.`, cls: "gold" },
+    { label: "Собрано в вылазке", val: `${rawOre} ед.`, cls: "gold" },
+    { label: "Доставлено в банк", val: `${ore} ед.`, cls: "gold-dim" },
     ...oreRows,
     { label: "Банк (всего)", val: `${bank} ед.`, cls: "gold-dim" },
     {
@@ -1738,16 +1777,140 @@ function showResult() {
     )
     .join("");
 
+  if (state.rewardMeta) {
+    const metaRows = [];
+    if (reason === "escape") {
+      metaRows.push({
+        label: "Качество рейса",
+        val: `${Math.round((state.rewardMeta.quality ?? 0) * 100)}%`,
+        cls: "blue",
+      });
+      metaRows.push({
+        label: "Коэфф. сохранения",
+        val: `${Math.round((state.rewardMeta.effectiveKeepRate ?? 0) * 100)}%`,
+        cls: "blue",
+      });
+      metaRows.push({
+        label: "Серия побегов",
+        val: `${state.rewardMeta.escapeStreakBefore ?? 0}`,
+        cls: "blue",
+      });
+    } else if (reason === "clear") {
+      metaRows.push({
+        label: "Бонус зачистки",
+        val: `+${Math.round((state.rewardMeta.clearBonus ?? 0) * 100)}%`,
+        cls: "green",
+      });
+    }
+    if (metaRows.length > 0) {
+      resultRows.innerHTML += metaRows.map(
+        ({ label, val, cls }) => `
+    <div class="result-row">
+      <span class="result-row-label">${label}</span>
+      <span class="result-row-val ${cls}">${val}</span>
+    </div>`,
+      ).join("");
+    }
+  }
+
   const flavours = {
     death: "Шахтёр не вернулся из глубин...",
-    escape: "Шахтёр выбрался, но потерял часть добычи.",
-    clear: "Поле зачищено! Шахтёр возвращается героем.",
+    escape: "Побег спас жизнь, но плохо окупается без прогресса в рейсе.",
+    clear: "Поле зачищено! Выдан бонус за полный контроль шахты.",
   };
   resultReason.textContent = flavours[reason] ?? "";
 
   selectedToolId = null;
   renderRunTools();
   setActive(screenResult);
+}
+
+function cloneOreMap(src) {
+  return {
+    [ORE_COPPER]: src[ORE_COPPER] ?? 0,
+    [ORE_SILVER]: src[ORE_SILVER] ?? 0,
+    [ORE_GOLD]: src[ORE_GOLD] ?? 0,
+    [ORE_DIAMOND]: src[ORE_DIAMOND] ?? 0,
+  };
+}
+
+function countSafeCells(stateRef) {
+  let safeTotal = 0;
+  let safeOpened = 0;
+  let flagsTotal = 0;
+  let flagsCorrect = 0;
+  for (let r = 0; r < stateRef.grid.length; r += 1) {
+    for (let c = 0; c < stateRef.grid[r].length; c += 1) {
+      const cell = stateRef.grid[r][c];
+      if (cell.type !== TYPE_UNSTABLE) {
+        safeTotal += 1;
+        if (cell.state === CELL_OPEN) safeOpened += 1;
+      }
+      if (cell.state === CELL_FLAGGED) {
+        flagsTotal += 1;
+        if (cell.type === TYPE_UNSTABLE) flagsCorrect += 1;
+      }
+    }
+  }
+  return { safeTotal, safeOpened, flagsTotal, flagsCorrect };
+}
+
+function calcRunQuality(stateRef) {
+  const { safeTotal, safeOpened, flagsTotal, flagsCorrect } = countSafeCells(stateRef);
+  const coverage = safeTotal > 0 ? safeOpened / safeTotal : 0;
+  const hpRatio = Math.max(0, Math.min(1, stateRef.hp / Math.max(1, stateRef.diff.startHp)));
+  const flagPrecision = flagsTotal > 0 ? flagsCorrect / flagsTotal : 0.5;
+  const qualityRaw = 0.20 + coverage * 0.55 + hpRatio * 0.20 + flagPrecision * 0.05;
+  const quality = Math.max(0.2, Math.min(1, qualityRaw));
+  return { quality, coverage, hpRatio, flagPrecision, safeTotal, safeOpened };
+}
+
+function applyRunSettlement() {
+  if (!state || state.settlementApplied) return;
+
+  const raw = cloneOreMap(state.ores);
+  const reason = state.endReason;
+  const { quality, coverage } = calcRunQuality(state);
+  const escapeStreakBefore = getEscapeStreak();
+
+  let finalOres = cloneOreMap(raw);
+  const meta = {
+    quality,
+    coverage,
+    escapeStreakBefore,
+  };
+
+  if (reason === "clear") {
+    const bonus = CLEAR_BONUS_MULT[state.diffKey] ?? 0.20;
+    Object.keys(finalOres).forEach((t) => {
+      finalOres[t] = Math.round(finalOres[t] * (1 + bonus));
+    });
+    meta.clearBonus = bonus;
+    setEscapeStreak(0);
+  } else if (reason === "escape") {
+    const baseKeep = ESCAPE_KEEP_BASE[state.diffKey] ?? 0.20;
+    const streakPenalty = escapeStreakBefore * ESCAPE_STREAK_KEEP_PENALTY;
+    const keepBeforeQuality = Math.max(ESCAPE_KEEP_MIN, baseKeep - streakPenalty);
+    const earlyEscape = coverage < EARLY_ESCAPE_MIN_COVERAGE;
+    const effectiveKeepRate = earlyEscape ? 0 : Math.max(0, keepBeforeQuality * quality);
+
+    Object.keys(finalOres).forEach((t) => {
+      finalOres[t] = Math.floor(finalOres[t] * effectiveKeepRate);
+    });
+
+    meta.baseKeep = baseKeep;
+    meta.keepBeforeQuality = keepBeforeQuality;
+    meta.effectiveKeepRate = effectiveKeepRate;
+    meta.earlyEscape = earlyEscape;
+    setEscapeStreak(escapeStreakBefore + 1);
+  } else {
+    setEscapeStreak(0);
+  }
+
+  state.rawOres = raw;
+  state.ores = finalOres;
+  state.rewardMeta = meta;
+  state.settlementApplied = true;
 }
 
 newRunBtn.addEventListener("click", showStartScreen);
