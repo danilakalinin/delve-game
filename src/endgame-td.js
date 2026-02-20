@@ -163,6 +163,20 @@ function getTowerUpgradeCost(tower) {
   return Math.round(type.cost * (0.75 + tower.level * 0.65));
 }
 
+function getTowerLevelStats(type, level = 1) {
+  const lvlMul = 1 + (level - 1) * 0.42;
+  return {
+    damage: Math.round(type.damage * lvlMul),
+    range: Math.round(type.range + (level - 1) * 7),
+    cooldown: Math.max(0.12, type.cooldown / (1 + (level - 1) * 0.08)),
+    special: type.slowMul
+      ? `Замедление до ${Math.round(type.slowMul * 100)}% на ${type.slowDuration.toFixed(1)}с`
+      : type.id === "cannon"
+        ? "Урон по области"
+        : "Фокус на одной цели",
+  };
+}
+
 function canSpendGold(amount) {
   if (typeof spendGoldCb !== "function") return false;
   return spendGoldCb(amount);
@@ -236,7 +250,7 @@ function handleSlotClick(slotIndex) {
       level: 1,
       cooldownLeft: 0,
     });
-    pushMessage(`${type.label} построена за ${type.cost} золота.`, "neutral");
+    pushMessage(`${type.label} построена в слоте #${slotIndex + 1} за ${type.cost} золота.`, "neutral");
     notifyStateChanged();
     renderHud();
     return;
@@ -248,7 +262,8 @@ function handleSlotClick(slotIndex) {
     return;
   }
   tower.level += 1;
-  pushMessage(`Башня улучшена до уровня ${tower.level}.`, "neutral");
+  const nextCost = getTowerUpgradeCost(tower);
+  pushMessage(`Слот #${slotIndex + 1}: уровень ${tower.level}. След. апгрейд ${nextCost} золота.`, "neutral");
   notifyStateChanged();
   renderHud();
 }
@@ -388,10 +403,21 @@ function drawPath() {
 }
 
 function drawSlots() {
+  const selectedType = TOWER_TYPES[state.selectedTowerId];
   for (let i = 0; i < TOWER_SLOTS.length; i += 1) {
     const slot = TOWER_SLOTS[i];
     const tower = state.towers.find((t) => t.slotIndex === i);
     ctx.save();
+    if (!tower && selectedType) {
+      ctx.beginPath();
+      ctx.setLineDash([6, 6]);
+      ctx.arc(slot.x, slot.y, selectedType.range, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(140, 199, 255, 0.18)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     ctx.beginPath();
     ctx.arc(slot.x, slot.y, 16, 0, Math.PI * 2);
     if (!tower) {
@@ -411,6 +437,10 @@ function drawSlots() {
       ctx.textAlign = "center";
       ctx.fillText(String(tower.level), slot.x, slot.y + 4);
     }
+    ctx.fillStyle = "rgba(205,227,244,0.7)";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(String(i + 1), slot.x, slot.y + 30);
     ctx.restore();
   }
 }
@@ -465,6 +495,13 @@ function renderHud() {
   const queueEl = document.getElementById("td-queue");
   const runEl = document.getElementById("td-run-tickets");
   const logEl = document.getElementById("td-log");
+  const selectedNameEl = document.getElementById("td-selected-name");
+  const selectedCostEl = document.getElementById("td-selected-cost");
+  const selectedDamageEl = document.getElementById("td-selected-dmg");
+  const selectedRangeEl = document.getElementById("td-selected-range");
+  const selectedCdEl = document.getElementById("td-selected-cd");
+  const selectedSpecialEl = document.getElementById("td-selected-special");
+  const slotInfoEl = document.getElementById("td-slots-info");
 
   if (waveEl) waveEl.textContent = String(state.wave);
   if (hpEl) hpEl.textContent = String(state.baseHp);
@@ -483,6 +520,23 @@ function renderHud() {
   if (selectedText) {
     const type = TOWER_TYPES[state.selectedTowerId];
     selectedText.textContent = type ? `${type.label} (${type.cost} золота)` : "—";
+  }
+
+  const selectedType = TOWER_TYPES[state.selectedTowerId];
+  if (selectedType) {
+    const stats = getTowerLevelStats(selectedType, 1);
+    if (selectedNameEl) selectedNameEl.textContent = selectedType.label;
+    if (selectedCostEl) selectedCostEl.textContent = `${selectedType.cost} золота`;
+    if (selectedDamageEl) selectedDamageEl.textContent = `${stats.damage}`;
+    if (selectedRangeEl) selectedRangeEl.textContent = `${stats.range}px`;
+    if (selectedCdEl) selectedCdEl.textContent = `${stats.cooldown.toFixed(2)}с`;
+    if (selectedSpecialEl) selectedSpecialEl.textContent = stats.special;
+  }
+
+  if (slotInfoEl) {
+    const built = state.towers.length;
+    const free = TOWER_SLOTS.length - built;
+    slotInfoEl.textContent = `Слоты: занято ${built}/${TOWER_SLOTS.length} • свободно ${free}`;
   }
 }
 
@@ -582,13 +636,31 @@ export function buildTdScreen() {
           <div class="td-controls">
             <div class="td-control-block">
               <div class="td-title">Башни (тратят только золото)</div>
-              <div class="td-btn-row">
-                <button class="btn-primary active" data-td-tower="bolt">Болтовая (90)</button>
-                <button class="btn-primary" data-td-tower="cannon">Пушка (160)</button>
-                <button class="btn-primary" data-td-tower="frost">Мороз (145)</button>
+              <div class="td-btn-row td-tower-grid">
+                <button class="btn-primary td-tower-card active" data-td-tower="bolt">
+                  <span class="td-tower-name">Болтовая</span>
+                  <span class="td-tower-meta">90 золота • Быстрая single-target</span>
+                </button>
+                <button class="btn-primary td-tower-card" data-td-tower="cannon">
+                  <span class="td-tower-name">Пушка</span>
+                  <span class="td-tower-meta">160 золота • Урон по области</span>
+                </button>
+                <button class="btn-primary td-tower-card" data-td-tower="frost">
+                  <span class="td-tower-name">Мороз</span>
+                  <span class="td-tower-meta">145 золота • Замедление + урон</span>
+                </button>
               </div>
               <div class="td-sub">Выбрано: <span id="td-selected-tower">Болтовая (90 золота)</span></div>
-              <div class="td-sub">Клик по точке: строить. Клик по башне: апгрейд.</div>
+              <div class="td-sub td-quick-guide">Клик по синему слоту: построить. Клик по построенной башне: апгрейд.</div>
+              <div class="td-sub" id="td-slots-info">Слоты: занято 0/8 • свободно 8</div>
+              <div class="td-selected-stats">
+                <div class="td-stat-row"><span>Тип</span><strong id="td-selected-name">Болтовая</strong></div>
+                <div class="td-stat-row"><span>Цена</span><strong id="td-selected-cost">90 золота</strong></div>
+                <div class="td-stat-row"><span>Урон (L1)</span><strong id="td-selected-dmg">18</strong></div>
+                <div class="td-stat-row"><span>Радиус (L1)</span><strong id="td-selected-range">110px</strong></div>
+                <div class="td-stat-row"><span>Перезарядка (L1)</span><strong id="td-selected-cd">0.55с</strong></div>
+                <div class="td-stat-row"><span>Особенность</span><strong id="td-selected-special">Фокус на одной цели</strong></div>
+              </div>
             </div>
 
             <div class="td-btn-row">
