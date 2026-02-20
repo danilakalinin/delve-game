@@ -47,6 +47,59 @@ const TOWER_TYPES = {
   },
 };
 
+const WAVE_UPGRADES = [
+  {
+    id: "forge_damage",
+    title: "Кузня Гильдии",
+    desc: "Весь урон башен +15%",
+    apply: (buffs) => {
+      buffs.damageMult *= 1.15;
+    },
+  },
+  {
+    id: "clockwork_reload",
+    title: "Часовой Механизм",
+    desc: "Скорость перезарядки +12%",
+    apply: (buffs) => {
+      buffs.cooldownMult *= 0.88;
+    },
+  },
+  {
+    id: "scout_markers",
+    title: "Метчики Разведки",
+    desc: "Радиус башен +12px",
+    apply: (buffs) => {
+      buffs.rangeBonus += 12;
+    },
+  },
+  {
+    id: "stone_repair",
+    title: "Каменная Латка",
+    desc: "Прочность крепости +3",
+    apply: (buffs, s) => {
+      buffs.baseHpBonus += 3;
+      s.baseHp += 3;
+    },
+  },
+  {
+    id: "bounty_writ",
+    title: "Охотничья Грамота",
+    desc: "Награда за волну: +1 билет",
+    apply: (buffs) => {
+      buffs.extraTickets += 1;
+    },
+  },
+  {
+    id: "frost_runes",
+    title: "Руны Инея",
+    desc: "Морозная башня сильнее замедляет",
+    apply: (buffs) => {
+      buffs.frostSlowBonus += 0.08;
+      buffs.frostDurationBonus += 0.35;
+    },
+  },
+];
+
 const state = {
   mounted: false,
   running: false,
@@ -68,6 +121,8 @@ const state = {
   lastTs: 0,
   messages: [],
   hoverPos: null,
+  pendingChoices: null,
+  buffs: null,
 };
 
 let canvas = null;
@@ -171,11 +226,12 @@ function getTowerUpgradeCost(tower) {
 }
 
 function getTowerLevelStats(type, level = 1) {
+  ensureBuffs();
   const lvlMul = 1 + (level - 1) * 0.42;
   return {
-    damage: Math.round(type.damage * lvlMul),
-    range: Math.round(type.range + (level - 1) * 7),
-    cooldown: Math.max(0.12, type.cooldown / (1 + (level - 1) * 0.08)),
+    damage: Math.round(type.damage * lvlMul * state.buffs.damageMult),
+    range: Math.round(type.range + (level - 1) * 7 + state.buffs.rangeBonus),
+    cooldown: Math.max(0.12, (type.cooldown / (1 + (level - 1) * 0.08)) * state.buffs.cooldownMult),
     special: type.slowMul
       ? `Замедление до ${Math.round(type.slowMul * 100)}% на ${type.slowDuration.toFixed(1)}с`
       : type.id === "cannon"
@@ -202,9 +258,28 @@ function addTickets(amount) {
   if (typeof addTicketsCb === "function") addTicketsCb(amount);
 }
 
+function ensureBuffs() {
+  if (state.buffs) return;
+  state.buffs = {
+    damageMult: 1,
+    cooldownMult: 1,
+    rangeBonus: 0,
+    extraTickets: 0,
+    baseHpBonus: 0,
+    frostSlowBonus: 0,
+    frostDurationBonus: 0,
+  };
+}
+
 function startNextWave() {
+  ensureBuffs();
   if (state.baseHp <= 0) {
     pushMessage("База разрушена. Начни новую серию.", "bad");
+    return;
+  }
+  if (state.pendingChoices?.length) {
+    pushMessage("Выбери один из трех апгрейдов перед новой волной.", "neutral");
+    showUpgradeChoicePanel();
     return;
   }
   if (state.waveActive) return;
@@ -218,14 +293,62 @@ function startNextWave() {
 }
 
 function finishWave() {
+  ensureBuffs();
   state.waveActive = false;
-  if (state.waveTickets > 0) {
-    addTickets(state.waveTickets);
-    state.totalTicketsSession += state.waveTickets;
-    pushMessage(`Волна ${state.wave} очищена: +${state.waveTickets} билет(ов).`, "good");
+  const ticketReward = state.waveTickets + (state.buffs.extraTickets ?? 0);
+  if (ticketReward > 0) {
+    addTickets(ticketReward);
+    state.totalTicketsSession += ticketReward;
+    pushMessage(`Волна ${state.wave} очищена: +${ticketReward} билет(ов).`, "good");
     notifyStateChanged();
   }
+  state.pendingChoices = pickUpgradeChoices();
+  showUpgradeChoicePanel();
   renderHud();
+}
+
+function pickUpgradeChoices() {
+  const pool = [...WAVE_UPGRADES];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 3);
+}
+
+function showUpgradeChoicePanel() {
+  const panel = document.getElementById("td-upgrade-panel");
+  const list = document.getElementById("td-upgrade-list");
+  if (!panel || !list) return;
+  const choices = state.pendingChoices ?? [];
+  if (!choices.length) {
+    panel.classList.remove("show");
+    return;
+  }
+  list.innerHTML = choices
+    .map(
+      (u) => `
+      <button class="td-upgrade-card" data-td-upgrade="${u.id}">
+        <div class="td-upgrade-title">${u.title}</div>
+        <div class="td-upgrade-desc">${u.desc}</div>
+      </button>`,
+    )
+    .join("");
+
+  list.querySelectorAll("[data-td-upgrade]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-td-upgrade");
+      const picked = choices.find((u) => u.id === id);
+      if (!picked) return;
+      picked.apply(state.buffs, state);
+      state.pendingChoices = null;
+      panel.classList.remove("show");
+      pushMessage(`Выбран апгрейд: ${picked.title}.`, "good");
+      renderHud();
+    });
+  });
+
+  panel.classList.add("show");
 }
 
 function resetSession() {
@@ -239,7 +362,18 @@ function resetSession() {
   state.waveTickets = 0;
   state.totalTicketsSession = 0;
   state.messages = [];
+  state.pendingChoices = null;
+  state.buffs = {
+    damageMult: 1,
+    cooldownMult: 1,
+    rangeBonus: 0,
+    extraTickets: 0,
+    baseHpBonus: 0,
+    frostSlowBonus: 0,
+    frostDurationBonus: 0,
+  };
   pushMessage("Новая серия TD запущена.", "neutral");
+  showUpgradeChoicePanel();
 }
 
 function getTowerAt(x, y) {
@@ -335,18 +469,22 @@ function acquireTarget(tower, range) {
 }
 
 function updateTowers(dt) {
+  ensureBuffs();
   for (const tower of state.towers) {
     const type = TOWER_TYPES[tower.typeId];
     const lvlMul = 1 + (tower.level - 1) * 0.42;
-    const range = type.range + (tower.level - 1) * 7;
-    const cd = Math.max(0.12, type.cooldown / (1 + (tower.level - 1) * 0.08));
+    const range = type.range + (tower.level - 1) * 7 + state.buffs.rangeBonus;
+    const cd = Math.max(
+      0.12,
+      (type.cooldown / (1 + (tower.level - 1) * 0.08)) * state.buffs.cooldownMult,
+    );
     tower.cooldownLeft = Math.max(0, tower.cooldownLeft - dt * state.speed);
     if (tower.cooldownLeft > 0) continue;
 
     const target = acquireTarget(tower, range);
     if (!target) continue;
 
-    const damage = type.damage * lvlMul;
+    const damage = type.damage * lvlMul * state.buffs.damageMult;
 
     if (type.id === "cannon") {
       for (const enemy of state.enemies) {
@@ -360,8 +498,12 @@ function updateTowers(dt) {
     }
 
     if (type.slowMul) {
-      target.slowMul = Math.min(target.slowMul, type.slowMul);
-      target.slowLeft = Math.max(target.slowLeft, type.slowDuration * lvlMul * 0.6);
+      const boostedSlow = Math.max(0.25, type.slowMul - state.buffs.frostSlowBonus);
+      target.slowMul = Math.min(target.slowMul, boostedSlow);
+      target.slowLeft = Math.max(
+        target.slowLeft,
+        (type.slowDuration + state.buffs.frostDurationBonus) * lvlMul * 0.6,
+      );
     }
 
     state.bullets.push({
@@ -407,7 +549,7 @@ function drawPath() {
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = "#2a4252";
+  ctx.strokeStyle = "#3a2b1d";
   ctx.lineWidth = 38;
   ctx.beginPath();
   ctx.moveTo(PATH_POINTS[0].x, PATH_POINTS[0].y);
@@ -416,7 +558,7 @@ function drawPath() {
   }
   ctx.stroke();
 
-  ctx.strokeStyle = "#6f9db6";
+  ctx.strokeStyle = "#9f7746";
   ctx.lineWidth = 4;
   ctx.stroke();
   ctx.restore();
@@ -431,7 +573,7 @@ function drawTowers() {
       ctx.beginPath();
       ctx.setLineDash([6, 6]);
       ctx.arc(tower.x, tower.y, selectedType.range, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(140, 199, 255, 0.18)";
+      ctx.strokeStyle = "rgba(214, 173, 107, 0.24)";
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.setLineDash([]);
@@ -457,15 +599,15 @@ function drawTowers() {
   ctx.beginPath();
   ctx.setLineDash([6, 6]);
   ctx.arc(state.hoverPos.x, state.hoverPos.y, selectedType.range, 0, Math.PI * 2);
-  ctx.strokeStyle = valid ? "rgba(125, 207, 255, 0.22)" : "rgba(255, 130, 130, 0.22)";
+  ctx.strokeStyle = valid ? "rgba(218, 176, 109, 0.28)" : "rgba(210, 118, 94, 0.24)";
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.setLineDash([]);
 
   ctx.beginPath();
   ctx.arc(state.hoverPos.x, state.hoverPos.y, TOWER_HIT_RADIUS, 0, Math.PI * 2);
-  ctx.fillStyle = valid ? "rgba(125, 207, 255, 0.4)" : "rgba(255, 130, 130, 0.4)";
-  ctx.strokeStyle = valid ? "#7dcfff" : "#ff8282";
+  ctx.fillStyle = valid ? "rgba(214, 168, 92, 0.32)" : "rgba(199, 106, 86, 0.35)";
+  ctx.strokeStyle = valid ? "#d4a85c" : "#c96a56";
   ctx.lineWidth = 2;
   ctx.fill();
   ctx.stroke();
@@ -477,13 +619,13 @@ function drawEnemies() {
     ctx.save();
     ctx.beginPath();
     ctx.arc(e.x, e.y, 10, 0, Math.PI * 2);
-    ctx.fillStyle = "#ef6868";
+    ctx.fillStyle = "#b45f42";
     ctx.fill();
 
     const hpPct = clamp(e.hp / e.maxHp, 0, 1);
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(e.x - 12, e.y - 18, 24, 4);
-    ctx.fillStyle = "#87e38d";
+    ctx.fillStyle = "#7fb46a";
     ctx.fillRect(e.x - 12, e.y - 18, 24 * hpPct, 4);
     ctx.restore();
   }
@@ -505,7 +647,7 @@ function drawBullets() {
 function renderCanvas() {
   if (!ctx || !canvas) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#0c1a25";
+  ctx.fillStyle = "#18120d";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawPath();
@@ -529,6 +671,7 @@ function renderHud() {
   const selectedCdEl = document.getElementById("td-selected-cd");
   const selectedSpecialEl = document.getElementById("td-selected-special");
   const slotInfoEl = document.getElementById("td-slots-info");
+  const buffsLineEl = document.getElementById("td-buffs-line");
 
   if (waveEl) waveEl.textContent = String(state.wave);
   if (hpEl) hpEl.textContent = String(state.baseHp);
@@ -563,6 +706,16 @@ function renderHud() {
   if (slotInfoEl) {
     const built = state.towers.length;
     slotInfoEl.textContent = `Построено башен: ${built} • Наложение запрещено`;
+  }
+  if (buffsLineEl) {
+    ensureBuffs();
+    const buffs = [];
+    if (state.buffs.damageMult > 1.001) buffs.push(`урон x${state.buffs.damageMult.toFixed(2)}`);
+    if (state.buffs.cooldownMult < 0.999) buffs.push(`перезарядка x${state.buffs.cooldownMult.toFixed(2)}`);
+    if (state.buffs.rangeBonus > 0) buffs.push(`радиус +${state.buffs.rangeBonus}`);
+    if (state.buffs.extraTickets > 0) buffs.push(`билеты +${state.buffs.extraTickets}/волну`);
+    if (state.buffs.baseHpBonus > 0) buffs.push(`крепость +${state.buffs.baseHpBonus}`);
+    buffsLineEl.textContent = `Бонусы серии: ${buffs.length ? buffs.join(" • ") : "нет"}`;
   }
 }
 
@@ -664,12 +817,12 @@ export function buildTdScreen() {
           <div class="td-atmo-sub">Защити рудный тракт от налетчиков. Волны усиливаются, награда растет.</div>
         </div>
         <div class="td-top">
-          <div>Волна: <strong id="td-wave">0</strong></div>
-          <div>База: <strong id="td-base-hp">20</strong></div>
-          <div>Золото: <strong id="td-gold">0</strong></div>
-          <div>Билеты: <strong id="td-tickets">0</strong></div>
-          <div>Врагов на поле: <strong id="td-queue">0</strong></div>
-          <div>Билеты за серию: <strong id="td-run-tickets">0</strong></div>
+          <div class="td-chip"><span class="td-chip-ico">🌊</span>Волна: <strong id="td-wave">0</strong></div>
+          <div class="td-chip"><span class="td-chip-ico">🏰</span>База: <strong id="td-base-hp">20</strong></div>
+          <div class="td-chip"><span class="td-chip-ico">🪙</span>Золото: <strong id="td-gold">0</strong></div>
+          <div class="td-chip"><span class="td-chip-ico">🎟</span>Билеты: <strong id="td-tickets">0</strong></div>
+          <div class="td-chip"><span class="td-chip-ico">👹</span>Врагов: <strong id="td-queue">0</strong></div>
+          <div class="td-chip"><span class="td-chip-ico">📜</span>Серия: <strong id="td-run-tickets">0</strong></div>
         </div>
 
         <div class="td-main">
@@ -679,6 +832,9 @@ export function buildTdScreen() {
             <div class="td-float-toast" id="td-float-toast"></div>
           </div>
           <div class="td-controls">
+            <div class="td-control-block">
+              <div class="td-sub" id="td-buffs-line">Бонусы серии: нет</div>
+            </div>
             <div class="td-control-block">
               <div class="td-title">Башни (тратят только золото)</div>
               <div class="td-btn-row td-tower-grid">
@@ -716,6 +872,12 @@ export function buildTdScreen() {
             </div>
 
             <div class="td-log" id="td-log"></div>
+          </div>
+        </div>
+        <div class="td-upgrade-panel" id="td-upgrade-panel">
+          <div class="td-upgrade-inner">
+            <div class="td-upgrade-head">Выбери усиление перед следующей волной</div>
+            <div class="td-upgrade-list" id="td-upgrade-list"></div>
           </div>
         </div>
       </div>
