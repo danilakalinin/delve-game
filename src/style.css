@@ -1803,11 +1803,16 @@ html, body {
   left: 14px;
   bottom: 16px;
   width: 330px;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 10px;
   z-index: 240;
   pointer-events: none;
+}
+
+#screen-start.active ~ #commentator,
+#screen-game.active ~ #commentator {
+  display: flex;
 }
 
 .commentator-rank {
@@ -3549,11 +3554,11 @@ html, body {
 }
 
 #screen-shop .shop-layout {
-  width: min(1520px, calc(100vw - 18px));
-  grid-template-columns: minmax(420px, 0.95fr) minmax(540px, 1.15fr);
-  gap: 14px;
-  padding: 12px;
-  max-height: calc(100vh - 16px);
+  width: min(1320px, calc(100vw - 18px));
+  grid-template-columns: minmax(370px, 0.92fr) minmax(500px, 1.08fr);
+  gap: 12px;
+  padding: 10px;
+  max-height: calc(100vh - 22px);
   overflow: hidden;
 }
 
@@ -3622,9 +3627,30 @@ html, body {
 }
 
 #screen-shop .shop-tab-pane > .panel {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
+}
+
+#screen-shop .shop-upgrades-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+#screen-shop .cc-upgrades-bought {
+  flex: 0 0 auto;
+}
+
+#screen-shop .cc-upgrade-available {
+  flex: 1 1 auto;
+  min-height: 170px;
+  overflow: auto;
+}
+
+#screen-shop .shop-ads-info {
+  flex: 0 0 auto;
 }
 
 #screen-shop .cc-upgrades-bought,
@@ -3652,10 +3678,10 @@ html, body {
 
 @media (max-width: 1400px) {
   #screen-shop .shop-layout {
-    width: min(1260px, calc(100vw - 14px));
-    grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
+    width: min(1160px, calc(100vw - 14px));
+    grid-template-columns: minmax(340px, 0.93fr) minmax(410px, 1.03fr);
     gap: 10px;
-    padding: 10px;
+    padding: 9px;
   }
 
   #screen-shop .shop-left {
@@ -3672,7 +3698,7 @@ html, body {
     width: min(980px, calc(100vw - 10px));
     grid-template-columns: 1fr;
     max-height: none;
-    overflow: visible;
+    overflow: hidden;
   }
 
   #screen-shop .shop-left,
@@ -3692,16 +3718,21 @@ html, body {
   }
 
   #screen-shop .shop-tab-pane > .panel {
-    max-height: none;
+    max-height: min(72vh, 640px);
     height: auto;
+    overflow: hidden;
   }
 
-  #screen-shop .cc-upgrade-available,
+  #screen-shop .cc-upgrade-available {
+    max-height: min(52vh, 420px);
+    overflow: auto;
+  }
+
   #screen-shop #staff-grid,
   #screen-shop .caravans-panel,
   #screen-shop .shop-econ-body,
   #screen-shop .shop-flow-body {
-    overflow: visible;
+    overflow: auto;
   }
 
   #screen-shop .shop-tab {
