@@ -535,6 +535,7 @@ function updateTowers(dt) {
       y2: target.y,
       t: 0.12,
       color: type.color,
+      typeId: type.id,
     });
 
     tower.cooldownLeft = cd;
@@ -571,8 +572,10 @@ function drawPath() {
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = "#3a2b1d";
-  ctx.lineWidth = 38;
+
+  // Dark outer edge
+  ctx.strokeStyle = "#2a1d12";
+  ctx.lineWidth = 44;
   ctx.beginPath();
   ctx.moveTo(PATH_POINTS[0].x, PATH_POINTS[0].y);
   for (let i = 1; i < PATH_POINTS.length; i += 1) {
@@ -580,75 +583,241 @@ function drawPath() {
   }
   ctx.stroke();
 
-  ctx.strokeStyle = "#9f7746";
-  ctx.lineWidth = 4;
+  // Main road body
+  ctx.strokeStyle = "#4a3525";
+  ctx.lineWidth = 36;
   ctx.stroke();
+
+  // Light center highlight
+  ctx.strokeStyle = "#7a5f42";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // Dashed stone border
+  ctx.setLineDash([8, 12]);
+  ctx.strokeStyle = "rgba(160,130,90,0.22)";
+  ctx.lineWidth = 40;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Entrance marker
+  const start = PATH_POINTS[0];
+  ctx.fillStyle = "#6ee7a0";
+  ctx.shadowColor = "rgba(110,231,160,0.5)";
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(start.x - 6, start.y - 12);
+  ctx.lineTo(start.x + 6, start.y - 12);
+  ctx.lineTo(start.x, start.y - 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Fortress marker at end
+  const end = PATH_POINTS[PATH_POINTS.length - 1];
+  ctx.fillStyle = "#f87171";
+  ctx.shadowColor = "rgba(248,113,113,0.5)";
+  ctx.shadowBlur = 8;
+  ctx.fillRect(end.x - 8, end.y - 10, 16, 14);
+  ctx.fillStyle = "#fca5a5";
+  ctx.fillRect(end.x - 4, end.y - 14, 3, 6);
+  ctx.fillRect(end.x + 1, end.y - 14, 3, 6);
+  ctx.shadowBlur = 0;
+
   ctx.restore();
+}
+
+function drawTowerShape(x, y, typeId, r) {
+  ctx.beginPath();
+  if (typeId === "bolt") {
+    // Diamond
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+  } else if (typeId === "cannon") {
+    // Rounded square
+    const s = r * 0.82;
+    const cr = 3;
+    ctx.moveTo(x - s + cr, y - s);
+    ctx.lineTo(x + s - cr, y - s);
+    ctx.quadraticCurveTo(x + s, y - s, x + s, y - s + cr);
+    ctx.lineTo(x + s, y + s - cr);
+    ctx.quadraticCurveTo(x + s, y + s, x + s - cr, y + s);
+    ctx.lineTo(x - s + cr, y + s);
+    ctx.quadraticCurveTo(x - s, y + s, x - s, y + s - cr);
+    ctx.lineTo(x - s, y - s + cr);
+    ctx.quadraticCurveTo(x - s, y - s, x - s + cr, y - s);
+    ctx.closePath();
+  } else {
+    // Hexagon (frost)
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 6;
+      const px = x + r * Math.cos(angle);
+      const py = y + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  }
 }
 
 function drawTowers() {
   const selectedType = TOWER_TYPES[state.selectedTowerId];
   for (const tower of state.towers) {
     const type = TOWER_TYPES[tower.typeId];
+    const stats = getTowerLevelStats(type, tower.level);
     ctx.save();
+
+    // Range circle (translucent fill, not dashed)
     if (selectedType && tower.typeId === state.selectedTowerId) {
+      const grad = ctx.createRadialGradient(tower.x, tower.y, stats.range * 0.7, tower.x, tower.y, stats.range);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(1, type.color.replace(")", ",0.08)").replace("rgb(", "rgba(").replace("#", ""));
       ctx.beginPath();
-      ctx.setLineDash([6, 6]);
-      ctx.arc(tower.x, tower.y, selectedType.range, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(214, 173, 107, 0.24)";
+      ctx.arc(tower.x, tower.y, stats.range, 0, Math.PI * 2);
+      ctx.fillStyle = `${type.color}11`;
+      ctx.fill();
+      ctx.strokeStyle = `${type.color}33`;
       ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.setLineDash([]);
     }
 
-    ctx.beginPath();
-    ctx.arc(tower.x, tower.y, TOWER_HIT_RADIUS, 0, Math.PI * 2);
+    // Glow effect
+    ctx.shadowColor = type.color + "88";
+    ctx.shadowBlur = 10;
+
+    // Tower shape
+    drawTowerShape(tower.x, tower.y, type.id, TOWER_HIT_RADIUS);
     ctx.fillStyle = type.color;
+    ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = "#0b1d29";
     ctx.lineWidth = 2;
-    ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = "#0d1720";
-    ctx.font = "bold 11px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(String(tower.level), tower.x, tower.y + 4);
+
+    // Cooldown arc
+    if (tower.cooldownLeft > 0) {
+      const cd = Math.max(0.12, (type.cooldown / (1 + (tower.level - 1) * 0.08)) * (state.buffs?.cooldownMult ?? 1));
+      const progress = 1 - tower.cooldownLeft / cd;
+      ctx.beginPath();
+      ctx.arc(tower.x, tower.y, TOWER_HIT_RADIUS + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+      ctx.strokeStyle = type.color + "66";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Level dots
+    const dots = tower.level;
+    const dotY = tower.y + TOWER_HIT_RADIUS + 6;
+    const dotSpacing = 6;
+    const startX = tower.x - ((dots - 1) * dotSpacing) / 2;
+    for (let d = 0; d < Math.min(dots, 5); d++) {
+      ctx.beginPath();
+      ctx.arc(startX + d * dotSpacing, dotY, 2, 0, Math.PI * 2);
+      ctx.fillStyle = type.color;
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 
+  // Hover preview
   if (!selectedType || !state.hoverPos) return;
   const valid = canPlaceTowerAt(state.hoverPos.x, state.hoverPos.y);
   ctx.save();
+
+  // Range preview
   ctx.beginPath();
-  ctx.setLineDash([6, 6]);
   ctx.arc(state.hoverPos.x, state.hoverPos.y, selectedType.range, 0, Math.PI * 2);
-  ctx.strokeStyle = valid ? "rgba(218, 176, 109, 0.28)" : "rgba(210, 118, 94, 0.24)";
+  ctx.fillStyle = valid ? "rgba(110,231,160,0.06)" : "rgba(248,113,113,0.06)";
+  ctx.fill();
+  ctx.strokeStyle = valid ? "rgba(110,231,160,0.25)" : "rgba(248,113,113,0.25)";
   ctx.lineWidth = 1;
   ctx.stroke();
-  ctx.setLineDash([]);
 
-  ctx.beginPath();
-  ctx.arc(state.hoverPos.x, state.hoverPos.y, TOWER_HIT_RADIUS, 0, Math.PI * 2);
-  ctx.fillStyle = valid ? "rgba(214, 168, 92, 0.32)" : "rgba(199, 106, 86, 0.35)";
-  ctx.strokeStyle = valid ? "#d4a85c" : "#c96a56";
-  ctx.lineWidth = 2;
+  // Tower preview shape
+  ctx.globalAlpha = 0.5;
+  drawTowerShape(state.hoverPos.x, state.hoverPos.y, state.selectedTowerId, TOWER_HIT_RADIUS);
+  ctx.fillStyle = valid ? selectedType.color : "#c96a56";
   ctx.fill();
+  ctx.strokeStyle = valid ? "#fff" : "#c96a56";
+  ctx.lineWidth = 1.5;
   ctx.stroke();
+  ctx.globalAlpha = 1;
+
   ctx.restore();
 }
 
 function drawEnemies() {
   for (const e of state.enemies) {
     ctx.save();
+
+    // Calculate direction from path
+    const nextProg = Math.min(1, e.progress + 0.02);
+    const next = pathPoint(nextProg);
+    const angle = Math.atan2(next.y - e.y, next.x - e.x);
+
+    // Slow effect ring
+    if (e.slowLeft > 0) {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 14, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(135,242,255,0.4)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Directional triangle body
+    ctx.translate(e.x, e.y);
+    ctx.rotate(angle);
     ctx.beginPath();
-    ctx.arc(e.x, e.y, 10, 0, Math.PI * 2);
-    ctx.fillStyle = "#b45f42";
+    ctx.moveTo(11, 0);
+    ctx.lineTo(-7, -7);
+    ctx.lineTo(-4, 0);
+    ctx.lineTo(-7, 7);
+    ctx.closePath();
+
+    ctx.shadowColor = "rgba(220,80,50,0.4)";
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = e.slowLeft > 0 ? "#7badc4" : "#dc5032";
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#1a0f0a";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Eye dot
+    ctx.beginPath();
+    ctx.arc(3, 0, 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
     ctx.fill();
 
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Health bar — gradient color based on HP
     const hpPct = clamp(e.hp / e.maxHp, 0, 1);
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(e.x - 12, e.y - 18, 24, 4);
-    ctx.fillStyle = "#7fb46a";
-    ctx.fillRect(e.x - 12, e.y - 18, 24 * hpPct, 4);
+    const barW = 28;
+    const barH = 4;
+    const barX = e.x - barW / 2;
+    const barY = e.y - 18;
+
+    // Background
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    const barR = 2;
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW, barH, barR);
+    ctx.fill();
+
+    // Health fill with color gradient
+    const hpColor = hpPct > 0.6 ? "#4ade80" : hpPct > 0.3 ? "#fbbf24" : "#f87171";
+    if (hpPct > 0) {
+      ctx.fillStyle = hpColor;
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW * hpPct, barH, barR);
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 }
@@ -656,12 +825,51 @@ function drawEnemies() {
 function drawBullets() {
   for (const b of state.bullets) {
     ctx.save();
-    ctx.strokeStyle = b.color;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(b.x1, b.y1);
-    ctx.lineTo(b.x2, b.y2);
-    ctx.stroke();
+    ctx.shadowColor = b.color + "88";
+    ctx.shadowBlur = 6;
+
+    if (b.typeId === "cannon") {
+      // Cannonball
+      ctx.beginPath();
+      ctx.arc(b.x2, b.y2, 4, 0, Math.PI * 2);
+      ctx.fillStyle = b.color;
+      ctx.fill();
+    } else if (b.typeId === "frost") {
+      // Star shape
+      ctx.translate(b.x2, b.y2);
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a = (Math.PI / 2) * i;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a) * 5, Math.sin(a) * 5);
+      }
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      // Trail line
+      ctx.strokeStyle = b.color + "44";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+    } else {
+      // Bolt — glowing line with tip
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+      // Bright tip
+      ctx.beginPath();
+      ctx.arc(b.x2, b.y2, 3, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
     ctx.restore();
   }
 }
@@ -669,7 +877,13 @@ function drawBullets() {
 function renderCanvas() {
   if (!ctx || !canvas) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#18120d";
+
+  // Gradient terrain background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  bgGrad.addColorStop(0, "#151d14");
+  bgGrad.addColorStop(0.5, "#1a1810");
+  bgGrad.addColorStop(1, "#18120d");
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawPath();
@@ -686,15 +900,12 @@ function renderHud() {
   const queueEl = document.getElementById("td-queue");
   const runEl = document.getElementById("td-run-tickets");
   const logEl = document.getElementById("td-log");
-  const selectedNameEl = document.getElementById("td-selected-name");
-  const selectedCostEl = document.getElementById("td-selected-cost");
   const selectedDamageEl = document.getElementById("td-selected-dmg");
   const selectedRangeEl = document.getElementById("td-selected-range");
   const selectedCdEl = document.getElementById("td-selected-cd");
   const selectedSpecialEl = document.getElementById("td-selected-special");
   const slotInfoEl = document.getElementById("td-slots-info");
   const buffsLineEl = document.getElementById("td-buffs-line");
-  const nextWaveFeeEl = document.getElementById("td-next-wave-fee");
   const boltCostEl = document.getElementById("td-cost-bolt");
   const cannonCostEl = document.getElementById("td-cost-cannon");
   const frostCostEl = document.getElementById("td-cost-frost");
@@ -707,49 +918,39 @@ function renderHud() {
   if (queueEl) queueEl.textContent = String(state.spawnQueue + state.enemies.length);
   if (runEl) runEl.textContent = String(state.totalTicketsSession);
   const nextCost = waveStartCost(state.wave + 1);
-  if (nextWaveFeeEl) nextWaveFeeEl.textContent = `${nextCost} золота`;
-  if (startWaveBtn) startWaveBtn.textContent = `Старт волны (−${nextCost})`;
+  if (startWaveBtn) startWaveBtn.textContent = `▶ Старт волны · −${nextCost}🪙`;
 
   if (logEl) {
     logEl.innerHTML = state.messages
+      .slice(0, 4)
       .map((m) => `<div class="td-log-line td-${m.tone}">${m.line}</div>`)
       .join("");
-  }
-
-  const selectedText = document.getElementById("td-selected-tower");
-  if (selectedText) {
-    const type = TOWER_TYPES[state.selectedTowerId];
-    selectedText.textContent = type ? `${type.label} (${getTowerBuildCost(type)} золота)` : "—";
   }
 
   const selectedType = TOWER_TYPES[state.selectedTowerId];
   if (selectedType) {
     const stats = getTowerLevelStats(selectedType, 1);
-    const buildCost = getTowerBuildCost(selectedType);
-    if (selectedNameEl) selectedNameEl.textContent = selectedType.label;
-    if (selectedCostEl) selectedCostEl.textContent = `${buildCost} золота`;
     if (selectedDamageEl) selectedDamageEl.textContent = `${stats.damage}`;
-    if (selectedRangeEl) selectedRangeEl.textContent = `${stats.range}px`;
+    if (selectedRangeEl) selectedRangeEl.textContent = `${stats.range}`;
     if (selectedCdEl) selectedCdEl.textContent = `${stats.cooldown.toFixed(2)}с`;
     if (selectedSpecialEl) selectedSpecialEl.textContent = stats.special;
   }
-  if (boltCostEl) boltCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.bolt)} золота`;
-  if (cannonCostEl) cannonCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.cannon)} золота`;
-  if (frostCostEl) frostCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.frost)} золота`;
+  if (boltCostEl) boltCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.bolt)}`;
+  if (cannonCostEl) cannonCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.cannon)}`;
+  if (frostCostEl) frostCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.frost)}`;
 
   if (slotInfoEl) {
-    const built = state.towers.length;
-    slotInfoEl.textContent = `Построено башен: ${built} • Наложение запрещено`;
+    slotInfoEl.textContent = `Башен: ${state.towers.length}`;
   }
   if (buffsLineEl) {
     ensureBuffs();
     const buffs = [];
     if (state.buffs.damageMult > 1.001) buffs.push(`урон x${state.buffs.damageMult.toFixed(2)}`);
     if (state.buffs.cooldownMult < 0.999) buffs.push(`перезарядка x${state.buffs.cooldownMult.toFixed(2)}`);
-    if (state.buffs.rangeBonus > 0) buffs.push(`радиус +${state.buffs.rangeBonus}`);
-    if (state.buffs.extraTickets > 0) buffs.push(`билеты +${state.buffs.extraTickets}/волну`);
-    if (state.buffs.baseHpBonus > 0) buffs.push(`крепость +${state.buffs.baseHpBonus}`);
-    buffsLineEl.textContent = `Бонусы серии: ${buffs.length ? buffs.join(" • ") : "нет"}`;
+    if (state.buffs.rangeBonus > 0) buffs.push(`+${state.buffs.rangeBonus} радиус`);
+    if (state.buffs.extraTickets > 0) buffs.push(`+${state.buffs.extraTickets} билет/волну`);
+    if (state.buffs.baseHpBonus > 0) buffs.push(`+${state.buffs.baseHpBonus} HP`);
+    buffsLineEl.textContent = buffs.length ? `Бонусы: ${buffs.join(" · ")}` : "Бонусы: нет";
   }
 }
 
@@ -817,7 +1018,7 @@ function bindUi() {
   document.getElementById("td-speed")?.addEventListener("click", () => {
     state.speed = state.speed === 1 ? 2 : state.speed === 2 ? 3 : 1;
     const btn = document.getElementById("td-speed");
-    if (btn) btn.textContent = `Скорость x${state.speed}`;
+    if (btn) btn.textContent = `x${state.speed}`;
   });
 
   document.querySelectorAll("[data-td-tower]").forEach((btn) => {
@@ -843,80 +1044,128 @@ function bindUi() {
 export function buildTdScreen() {
   return `
   <div id="screen-td" class="screen">
-    <div class="panel td-panel">
-      <div class="panel-header"><span class="icon">🛡</span> ШАХТНЫЙ ПОЛИГОН TD</div>
-      <div class="panel-body td-layout">
-        <div class="td-atmo-banner">
-          <div class="td-atmo-title">Крепость Лазурного Шпиля</div>
-          <div class="td-atmo-sub">Защити рудный тракт от налетчиков. Волны усиливаются, награда растет.</div>
+
+    <nav class="gacha-topbar">
+      <div class="gacha-topbar-brand">
+        <span class="gacha-topbar-emoji">🏰</span>
+        <span class="gacha-topbar-title">Крепость</span>
+      </div>
+      <div class="gacha-topbar-stats">
+        <div class="resource-chip">
+          <span>🌊</span>
+          <span class="resource-val" id="td-wave">0</span>
+          <span class="resource-label">волна</span>
         </div>
-        <div class="td-top">
-          <div class="td-chip"><span class="td-chip-ico">🌊</span>Волна: <strong id="td-wave">0</strong></div>
-          <div class="td-chip"><span class="td-chip-ico">🏰</span>База: <strong id="td-base-hp">20</strong></div>
-          <div class="td-chip"><span class="td-chip-ico">🪙</span>Золото: <strong id="td-gold">0</strong></div>
-          <div class="td-chip"><span class="td-chip-ico">🎟</span>Билеты: <strong id="td-tickets">0</strong></div>
-          <div class="td-chip"><span class="td-chip-ico">👹</span>Врагов: <strong id="td-queue">0</strong></div>
-          <div class="td-chip"><span class="td-chip-ico">📜</span>Серия: <strong id="td-run-tickets">0</strong></div>
+        <div class="resource-chip">
+          <span>🏰</span>
+          <span class="resource-val" id="td-base-hp">20</span>
+          <span class="resource-label">HP</span>
+        </div>
+        <div class="resource-chip">
+          <span class="resource-dot" style="background:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></span>
+          <span class="resource-val" id="td-gold">0</span>
+          <span class="resource-label">золото</span>
+        </div>
+        <div class="resource-chip">
+          <span>🎟</span>
+          <span class="resource-val" id="td-tickets">0</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="topbar-btn" id="td-speed">x1</button>
+        <button class="topbar-btn" id="td-reset-run">Сброс</button>
+        <button class="topbar-btn" id="td-back">← Меню</button>
+      </div>
+    </nav>
+
+    <div class="td-content">
+      <div class="td-field-layout">
+
+        <div class="td-canvas-area">
+          <canvas id="td-canvas" width="800" height="380"></canvas>
+          <div class="td-float-toast" id="td-float-toast"></div>
         </div>
 
-        <div class="td-main">
-          <div class="td-canvas-wrap">
-            <canvas id="td-canvas" width="800" height="380"></canvas>
-            <div class="td-canvas-tip">Ставь башни в любую точку поля. На одно место можно поставить только одну башню.</div>
-            <div class="td-float-toast" id="td-float-toast"></div>
-          </div>
-          <div class="td-controls">
-            <div class="td-control-block">
-              <div class="td-sub" id="td-buffs-line">Бонусы серии: нет</div>
-              <div class="td-sub">Вход в следующую волну: <strong id="td-next-wave-fee">133 золота</strong></div>
+        <div class="td-sidebar">
+
+          <!-- Tower selection -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-header-icon">⚔</span>
+              <span class="card-header-text">Башни</span>
             </div>
-            <div class="td-control-block">
-              <div class="td-title">Башни (тратят только золото)</div>
-              <div class="td-btn-row td-tower-grid">
-                <button class="btn-primary td-tower-card active" data-td-tower="bolt">
-                  <span class="td-tower-name">Болтовая</span>
-                  <span class="td-tower-meta"><span id="td-cost-bolt">90 золота</span> • Быстрая single-target</span>
+            <div class="card-body">
+              <div class="td-tower-grid">
+                <button class="td-tower-card active" data-td-tower="bolt">
+                  <span class="td-tower-icon" style="color:#8cc7ff">⚡</span>
+                  <div class="td-tower-info">
+                    <span class="td-tower-name">Болтовая</span>
+                    <span class="td-tower-meta"><span id="td-cost-bolt">90</span>🪙 · Быстрая</span>
+                  </div>
                 </button>
-                <button class="btn-primary td-tower-card" data-td-tower="cannon">
-                  <span class="td-tower-name">Пушка</span>
-                  <span class="td-tower-meta"><span id="td-cost-cannon">160 золота</span> • Урон по области</span>
+                <button class="td-tower-card" data-td-tower="cannon">
+                  <span class="td-tower-icon" style="color:#f6b36b">💣</span>
+                  <div class="td-tower-info">
+                    <span class="td-tower-name">Пушка</span>
+                    <span class="td-tower-meta"><span id="td-cost-cannon">160</span>🪙 · Область</span>
+                  </div>
                 </button>
-                <button class="btn-primary td-tower-card" data-td-tower="frost">
-                  <span class="td-tower-name">Мороз</span>
-                  <span class="td-tower-meta"><span id="td-cost-frost">145 золота</span> • Замедление + урон</span>
+                <button class="td-tower-card" data-td-tower="frost">
+                  <span class="td-tower-icon" style="color:#87f2ff">❄️</span>
+                  <div class="td-tower-info">
+                    <span class="td-tower-name">Мороз</span>
+                    <span class="td-tower-meta"><span id="td-cost-frost">145</span>🪙 · Замедление</span>
+                  </div>
                 </button>
               </div>
-              <div class="td-sub">Выбрано: <span id="td-selected-tower">Болтовая (90 золота)</span></div>
-              <div class="td-sub td-quick-guide">Клик по свободной точке: построить. Клик по построенной башне: апгрейд.</div>
-              <div class="td-sub" id="td-slots-info">Построено башен: 0 • Наложение запрещено</div>
-              <div class="td-selected-stats">
-                <div class="td-stat-row"><span>Тип</span><strong id="td-selected-name">Болтовая</strong></div>
-                <div class="td-stat-row"><span>Цена</span><strong id="td-selected-cost">90 золота</strong></div>
-                <div class="td-stat-row"><span>Урон (L1)</span><strong id="td-selected-dmg">18</strong></div>
-                <div class="td-stat-row"><span>Радиус (L1)</span><strong id="td-selected-range">110px</strong></div>
-                <div class="td-stat-row"><span>Перезарядка (L1)</span><strong id="td-selected-cd">0.55с</strong></div>
-                <div class="td-stat-row"><span>Особенность</span><strong id="td-selected-special">Фокус на одной цели</strong></div>
+            </div>
+          </div>
+
+          <!-- Info card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-header-icon">📊</span>
+              <span class="card-header-text">Инфо</span>
+            </div>
+            <div class="card-body td-info-body">
+              <div class="td-stats-grid">
+                <div class="td-stat-cell"><span class="td-stat-lbl">Урон</span><strong id="td-selected-dmg">18</strong></div>
+                <div class="td-stat-cell"><span class="td-stat-lbl">Радиус</span><strong id="td-selected-range">110</strong></div>
+                <div class="td-stat-cell"><span class="td-stat-lbl">Скор.</span><strong id="td-selected-cd">0.55с</strong></div>
+                <div class="td-stat-cell"><span class="td-stat-lbl">Тип</span><strong id="td-selected-special">Фокус</strong></div>
               </div>
+              <div class="td-info-line" id="td-buffs-line">Бонусы: нет</div>
+              <div class="td-info-line">👹 Врагов: <strong id="td-queue">0</strong> · 📜 Серия: <strong id="td-run-tickets">0</strong> билетов</div>
+              <div class="td-info-line" id="td-slots-info">Башен: 0</div>
+              <div class="td-info-tip">Клик: построить · Клик по башне: улучшить</div>
             </div>
+          </div>
 
-            <div class="td-btn-row">
-              <button class="btn-primary" id="td-start-wave">Старт волны</button>
-              <button class="btn-primary" id="td-speed">Скорость x1</button>
-              <button class="btn-danger" id="td-reset-run">Сброс серии</button>
-              <button class="btn-primary" id="td-back">← Назад</button>
+          <!-- Start wave button -->
+          <button class="td-start-btn" id="td-start-wave">▶ Старт волны</button>
+
+          <!-- Game log -->
+          <div class="card td-log-card">
+            <div class="card-header">
+              <span class="card-header-icon">📜</span>
+              <span class="card-header-text">Журнал</span>
             </div>
+            <div class="card-body card-body-flush">
+              <div class="td-log" id="td-log"></div>
+            </div>
+          </div>
 
-            <div class="td-log" id="td-log"></div>
-          </div>
-        </div>
-        <div class="td-upgrade-panel" id="td-upgrade-panel">
-          <div class="td-upgrade-inner">
-            <div class="td-upgrade-head">Выбери усиление перед следующей волной</div>
-            <div class="td-upgrade-list" id="td-upgrade-list"></div>
-          </div>
         </div>
       </div>
     </div>
+
+    <div class="td-upgrade-panel" id="td-upgrade-panel">
+      <div class="td-upgrade-inner">
+        <div class="td-upgrade-head">Выбери усиление</div>
+        <div class="td-upgrade-list" id="td-upgrade-list"></div>
+      </div>
+    </div>
+
   </div>`;
 }
 
