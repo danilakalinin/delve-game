@@ -4980,10 +4980,75 @@ html, body {
 
 /* Roll buttons */
 .gacha-roll-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.gacha-roll-btn {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 3px;
+  padding: 10px 4px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text, #e8ddd0);
+  cursor: pointer;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  transition: background 0.15s, border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+}
+
+.gacha-roll-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.11);
+  border-color: rgba(255,255,255,0.26);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+}
+
+.gacha-roll-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.gacha-roll-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.gacha-roll-x {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.gacha-roll-sub {
+  font-size: 10px;
+  color: var(--text-dim, #9a8a7a);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* MAX button — highlighted */
+.gacha-roll-btn-max {
+  background: linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(217,70,10,0.09) 100%);
+  border-color: rgba(245,158,11,0.30);
+}
+
+.gacha-roll-btn-max .gacha-roll-x {
+  color: #fbbf24;
+}
+
+.gacha-roll-btn-max:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(245,158,11,0.24) 0%, rgba(217,70,10,0.16) 100%);
+  border-color: rgba(245,158,11,0.55);
+  box-shadow: 0 0 14px rgba(245,158,11,0.18);
 }
 
 /* Last roll */
@@ -5531,7 +5596,6 @@ html, body {
     font-size: 10px;
   }
 
-  .gacha-roll-actions .btn-primary,
   .td-btn-row .btn-primary,
   .td-btn-row .btn-danger {
     flex: 1;
@@ -5547,8 +5611,7 @@ html, body {
   }
 
   .gacha-roll-actions {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .gacha-machine-head,

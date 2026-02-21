@@ -202,11 +202,24 @@ function emitStateChanged() {
   if (typeof onStateChanged === "function") onStateChanged();
 }
 
+const ROLL_MAX_AT_ONCE = 50;
+
 function setRollButtonsDisabled(disabled) {
-  const roll1 = document.getElementById("gacha-roll-1");
-  const roll5 = document.getElementById("gacha-roll-5");
-  if (roll1) roll1.disabled = disabled;
-  if (roll5) roll5.disabled = disabled;
+  ["gacha-roll-1", "gacha-roll-5", "gacha-roll-10", "gacha-roll-max"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+function renderGachaRollButtons() {
+  const tickets = getTickets();
+  const maxCount = Math.min(tickets, ROLL_MAX_AT_ONCE);
+  const maxLabel = document.getElementById("gacha-roll-max-label");
+  const roll10   = document.getElementById("gacha-roll-10");
+  const rollMax  = document.getElementById("gacha-roll-max");
+  if (maxLabel) maxLabel.textContent = maxCount > 0 ? `${maxCount} бил.` : "нет бил.";
+  if (roll10)   roll10.disabled  = rolling || tickets < 10;
+  if (rollMax)  rollMax.disabled = rolling || maxCount < 1;
 }
 
 function safeParse(json, fallback) {
@@ -588,8 +601,22 @@ export function buildGachaScreen() {
               <div class="gacha-reel-status" id="gacha-reel-status">ГОТОВ К КРУТКЕ</div>
             </div>
             <div class="gacha-roll-actions">
-              <button class="btn-primary" id="gacha-roll-1">Крутка ×1</button>
-              <button class="btn-primary" id="gacha-roll-5">Крутка ×5</button>
+              <button class="gacha-roll-btn" id="gacha-roll-1">
+                <span class="gacha-roll-x">×1</span>
+                <span class="gacha-roll-sub">1 билет</span>
+              </button>
+              <button class="gacha-roll-btn" id="gacha-roll-5">
+                <span class="gacha-roll-x">×5</span>
+                <span class="gacha-roll-sub">5 билетов</span>
+              </button>
+              <button class="gacha-roll-btn" id="gacha-roll-10">
+                <span class="gacha-roll-x">×10</span>
+                <span class="gacha-roll-sub">10 билетов</span>
+              </button>
+              <button class="gacha-roll-btn gacha-roll-btn-max" id="gacha-roll-max">
+                <span class="gacha-roll-x">×MAX</span>
+                <span class="gacha-roll-sub" id="gacha-roll-max-label">—</span>
+              </button>
             </div>
             <div class="gacha-last-roll">
               <div class="gacha-last-title" id="gacha-last-title">Последняя крутка</div>
@@ -671,9 +698,11 @@ export function buildInventoryScreen() {
 export function initGachaScreen({ onBack, onStateChanged: onState, onRollsCompleted }) {
   onStateChanged = onState;
   onRollsCompletedCb = onRollsCompleted ?? null;
-  const back = document.getElementById("gacha-back");
-  const roll1 = document.getElementById("gacha-roll-1");
-  const roll5 = document.getElementById("gacha-roll-5");
+  const back    = document.getElementById("gacha-back");
+  const roll1   = document.getElementById("gacha-roll-1");
+  const roll5   = document.getElementById("gacha-roll-5");
+  const roll10  = document.getElementById("gacha-roll-10");
+  const rollMax = document.getElementById("gacha-roll-max");
 
   back?.addEventListener("click", () => {
     if (typeof onBack === "function") onBack();
@@ -741,12 +770,12 @@ export function initGachaScreen({ onBack, onStateChanged: onState, onRollsComple
     rolling = false;
   };
 
-  roll1?.addEventListener("click", () => {
-    spin(1);
-  });
-
-  roll5?.addEventListener("click", () => {
-    spin(5);
+  roll1?.addEventListener("click", () => { spin(1); });
+  roll5?.addEventListener("click", () => { spin(5); });
+  roll10?.addEventListener("click", () => { spin(10); });
+  rollMax?.addEventListener("click", () => {
+    const count = Math.min(getTickets(), ROLL_MAX_AT_ONCE);
+    if (count > 0) spin(count);
   });
 }
 
@@ -759,6 +788,7 @@ export function initInventoryScreen({ onBack }) {
 
 export function renderGachaScreen() {
   renderGachaCollection();
+  renderGachaRollButtons();
 }
 
 export function renderInventoryScreen() {
