@@ -254,22 +254,36 @@ export function renderProspectorsUpgrades() {
 export function buildProspectorsScreen() {
   return `
   <div id="screen-prospectors" class="screen">
-    <div class="panel prospectors-panel">
-      <div class="panel-header">
-        <span class="icon">⛏</span> КЛУБ СТАРАТЕЛЕЙ
-        <button class="shop-back-btn btn-primary" id="prospectors-back-btn">← МЕНЮ</button>
-      </div>
-      <div class="panel-body">
-        <p class="prospectors-intro">
-          Постоянные улучшения шахтера. Расходники покупай прямо перед вылазкой.
-        </p>
-        <div class="prospectors-summary">
-          <span>Потрачено: <strong id="prospectors-spent">0</strong> монет</span>
-          <span>Инструментов куплено: <strong id="prospectors-bought">0</strong></span>
-        </div>
 
-        <div class="prospectors-section">
-          <h3 class="prospectors-section-title">Постоянные улучшения</h3>
+    <!-- Навбар -->
+    <nav class="shop-topbar">
+      <div class="shop-topbar-brand">
+        <span class="shop-topbar-emoji">⛏</span>
+        <span class="shop-topbar-title">Клуб старателей</span>
+      </div>
+      <button class="topbar-btn" id="prospectors-back-btn">← Меню</button>
+    </nav>
+
+    <div class="prospectors-content">
+      <div class="card prospectors-card">
+        <div class="card-header">
+          <span class="card-header-icon">⛏</span>
+          <span class="card-header-text">Постоянные улучшения</span>
+        </div>
+        <div class="card-body">
+          <p class="prospectors-intro">
+            Постоянные улучшения шахтера. Расходники покупай прямо перед вылазкой.
+          </p>
+          <div class="prospectors-summary">
+            <div class="prospectors-summary-chip">
+              <span class="prospectors-summary-label">Потрачено</span>
+              <strong id="prospectors-spent">0</strong> монет
+            </div>
+            <div class="prospectors-summary-chip">
+              <span class="prospectors-summary-label">Инструментов</span>
+              <strong id="prospectors-bought">0</strong> куплено
+            </div>
+          </div>
           <div id="prospectors-upgrades" class="prospectors-list"></div>
         </div>
       </div>

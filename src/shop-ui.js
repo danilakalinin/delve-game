@@ -62,111 +62,129 @@ let _onCaravanEvent = null;
 export function buildShopScreen() {
   return `
   <div id="screen-shop" class="screen">
-    <div class="shop-layout">
 
-      <!-- Левая колонка: статус + лог -->
-      <div class="shop-left">
+    <!-- Навбар магазина -->
+    <nav class="shop-topbar">
+      <div class="shop-topbar-brand">
+        <img class="shop-topbar-icon" src="${shopIconUrl}" draggable="false" alt="">
+        <span class="shop-topbar-title">Торговая лавка</span>
+      </div>
+      <div class="shop-topbar-stats">
+        <div class="resource-chip resource-gold">
+          <span class="resource-dot resource-dot-gold"></span>
+          <span class="resource-val" id="shop-gold-val">0</span>
+          <span class="resource-label">монет</span>
+        </div>
+        <div class="resource-chip" id="shop-salary-row" style="display:none">
+          <span class="resource-dot" style="background:var(--red);box-shadow:0 0 6px rgba(239,68,68,0.5)"></span>
+          <span class="resource-val" style="color:var(--red-hi)" id="shop-salary-val">0</span>
+          <span class="resource-label">зарплата/с</span>
+        </div>
+      </div>
+      <button class="topbar-btn shop-back-btn" id="shop-back-btn">← Меню</button>
+    </nav>
 
-        <div class="panel shop-header-panel">
-          <div class="panel-header">
-            <img class="shop-title-icon" src="${shopIconUrl}" draggable="false" alt="">
-            <span>ТОРГОВАЯ ЛАВКА</span>
-            <button class="shop-back-btn btn-primary" id="shop-back-btn">← МЕНЮ</button>
-          </div>
-          <div class="shop-stats">
-            <div class="shop-stat-row">
-              <span class="shop-stat-label">Банк руды</span>
+    <div class="shop-content">
+      <div class="shop-layout">
+
+        <!-- Левая колонка -->
+        <div class="shop-left">
+
+          <div class="card shop-stats-card">
+            <div class="card-header">
+              <span class="card-header-icon">📊</span>
+              <span class="card-header-text">Состояние магазина</span>
+            </div>
+            <div class="card-body">
               <div class="shop-ore-bank-grid" id="shop-ore-bank-grid"></div>
-            </div>
-            <div class="shop-stat-row">
-              <span class="shop-stat-label">Монеты</span>
-              <span class="shop-stat-val gold-color" id="shop-gold-val">0 монет</span>
-            </div>
-            <div class="shop-stat-row">
-              <span class="shop-stat-label">Посетителей</span>
-              <span class="shop-stat-val" id="shop-visitor-rate">~1 / 25с</span>
-            </div>
-            <div class="shop-stat-row" id="shop-salary-row" style="display:none">
-              <span class="shop-stat-label">Зарплаты</span>
-              <span class="shop-stat-val shop-salary-val" id="shop-salary-val">0 монет/сек</span>
-            </div>
-            <div class="shop-stat-row" id="shop-loss-row">
-              <span class="shop-stat-label">Потери</span>
-              <span class="shop-stat-val" id="shop-loss-val">6%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Лог сделок -->
-        <div class="panel shop-log-panel">
-          <div class="panel-header"><span class="icon">📋</span> ЖУРНАЛ СДЕЛОК</div>
-          <div class="shop-log" id="shop-log">
-            <div class="shop-log-empty">Ожидаем покупателей...</div>
-          </div>
-        </div>
-
-        <div class="panel shop-reviews-panel">
-          <div class="panel-header"><span class="icon">⭐</span> ОТЗЫВЫ ПОКУПАТЕЛЕЙ</div>
-          <div class="shop-reviews" id="shop-reviews"></div>
-        </div>
-
-      </div>
-
-      <!-- Правая колонка: вкладки -->
-      <div class="shop-right">
-
-        <div class="panel shop-econ-panel">
-          <div class="panel-header"><span class="icon">📈</span> ЭКОНОМИКА ПОТОКА</div>
-          <div class="shop-econ-body" id="shop-econ-body"></div>
-        </div>
-
-        <div class="panel shop-flow-panel">
-          <div class="panel-header"><span class="icon">🧍</span> ОЧЕРЕДЬ И ПРОДАВЦЫ</div>
-          <div class="shop-flow-body" id="shop-flow-body"></div>
-        </div>
-
-        <!-- Таб-навигация -->
-        <div class="shop-tabs">
-          <button class="shop-tab shop-tab-active" data-tab="ads">📣 Реклама</button>
-          <button class="shop-tab" data-tab="staff">👥 Штат</button>
-          <button class="shop-tab" data-tab="caravans">🚢 Караваны</button>
-        </div>
-
-        <!-- Вкладка: Реклама -->
-        <div class="shop-tab-pane" id="shop-tab-ads">
-          <div class="panel shop-upgrades-panel" style="border-top:none;border-radius:0 0 6px 6px;">
-            <div class="cc-upgrades-bought" id="cc-bought"></div>
-            <div class="cc-upgrade-available" id="cc-available"></div>
-            <div class="shop-ads-info" id="shop-ads-info"></div>
-          </div>
-        </div>
-
-        <!-- Вкладка: Штат -->
-        <div class="shop-tab-pane" id="shop-tab-staff" style="display:none">
-          <div class="panel" style="border-top:none;border-radius:0 0 6px 6px;padding:12px;">
-            <div class="staff-grid" id="staff-grid"></div>
-          </div>
-        </div>
-
-        <!-- Вкладка: Караваны -->
-        <div class="shop-tab-pane" id="shop-tab-caravans" style="display:none">
-          <div class="panel caravans-panel" style="border-top:none;border-radius:0 0 6px 6px;padding:12px;">
-            <div class="caravans-top">
-              <div class="caravans-ore-picker">
-                <label for="caravan-ore-select">Груз:</label>
-                <select id="caravan-ore-select" class="caravan-ore-select"></select>
+              <div class="shop-stat-row">
+                <span class="shop-stat-label">Посетителей</span>
+                <span class="shop-stat-val" id="shop-visitor-rate">~1 / 25с</span>
               </div>
-              <div class="caravans-active-meta" id="caravans-active-meta">Активно: 0/2</div>
+              <div class="shop-stat-row" id="shop-loss-row">
+                <span class="shop-stat-label">Потери</span>
+                <span class="shop-stat-val" id="shop-loss-val">6%</span>
+              </div>
             </div>
-            <div class="caravans-summary" id="caravans-summary"></div>
-            <div class="caravans-upgrades" id="caravans-upgrades"></div>
-            <div class="caravans-route-grid" id="caravans-route-grid"></div>
-            <div class="caravans-active-list" id="caravans-active-list"></div>
           </div>
+
+          <div class="card shop-log-card">
+            <div class="card-header">
+              <span class="card-header-icon">📋</span>
+              <span class="card-header-text">Журнал сделок</span>
+            </div>
+            <div class="shop-log" id="shop-log">
+              <div class="shop-log-empty">Ожидаем покупателей...</div>
+            </div>
+          </div>
+
+          <div class="card shop-reviews-card">
+            <div class="card-header">
+              <span class="card-header-icon">⭐</span>
+              <span class="card-header-text">Отзывы покупателей</span>
+            </div>
+            <div class="shop-reviews" id="shop-reviews"></div>
+          </div>
+
         </div>
 
-      </div>
+        <!-- Правая колонка -->
+        <div class="shop-right">
 
+          <div class="card shop-econ-card">
+            <div class="card-header">
+              <span class="card-header-icon">📈</span>
+              <span class="card-header-text">Экономика потока</span>
+            </div>
+            <div class="shop-econ-body" id="shop-econ-body"></div>
+          </div>
+
+          <div class="card shop-flow-card">
+            <div class="card-header">
+              <span class="card-header-icon">🧍</span>
+              <span class="card-header-text">Очередь и продавцы</span>
+            </div>
+            <div class="shop-flow-body" id="shop-flow-body"></div>
+          </div>
+
+          <div class="shop-tabs">
+            <button class="shop-tab shop-tab-active" data-tab="ads">📣 Реклама</button>
+            <button class="shop-tab" data-tab="staff">👥 Штат</button>
+            <button class="shop-tab" data-tab="caravans">🚢 Караваны</button>
+          </div>
+
+          <div class="shop-tab-pane" id="shop-tab-ads">
+            <div class="card shop-upgrades-card">
+              <div class="cc-upgrades-bought" id="cc-bought"></div>
+              <div class="cc-upgrade-available" id="cc-available"></div>
+              <div class="shop-ads-info" id="shop-ads-info"></div>
+            </div>
+          </div>
+
+          <div class="shop-tab-pane" id="shop-tab-staff" style="display:none">
+            <div class="card shop-staff-card">
+              <div class="staff-grid" id="staff-grid"></div>
+            </div>
+          </div>
+
+          <div class="shop-tab-pane" id="shop-tab-caravans" style="display:none">
+            <div class="card shop-caravans-card">
+              <div class="caravans-top">
+                <div class="caravans-ore-picker">
+                  <label for="caravan-ore-select">Груз:</label>
+                  <select id="caravan-ore-select" class="caravan-ore-select"></select>
+                </div>
+                <div class="caravans-active-meta" id="caravans-active-meta">Активно: 0/2</div>
+              </div>
+              <div class="caravans-summary" id="caravans-summary"></div>
+              <div class="caravans-upgrades" id="caravans-upgrades"></div>
+              <div class="caravans-route-grid" id="caravans-route-grid"></div>
+              <div class="caravans-active-list" id="caravans-active-list"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>`;
 }
