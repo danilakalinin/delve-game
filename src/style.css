@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&subset=cyrillic&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Rubik+Pixels&display=swap");
 
@@ -532,42 +532,64 @@ body {
 }
 
 .launcher-play-btn {
-  font-family: "Rubik Pixels", var(--font-heading), monospace;
-  font-size: clamp(14px, 2vw, 20px);
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(10px, 1.4vw, 15px);
   font-weight: 400;
-  color: #fff;
-  background: linear-gradient(135deg, #14532d 0%, #166534 45%, #15803d 100%);
-  border: 2px solid #22c55e;
-  border-radius: 8px;
-  padding: 18px 44px;
+  color: #d4ffb0;
+  background: linear-gradient(180deg, #3a7d2c 0%, #2a6020 50%, #1c4516 100%);
+  border: none;
+  border-radius: 4px;
+  padding: 22px 56px;
   cursor: pointer;
   user-select: none;
-  letter-spacing: 2px;
-  line-height: 1;
-  text-shadow: 0 0 14px rgba(134, 239, 172, 0.7);
+  letter-spacing: 3px;
+  line-height: 1.5;
+  /* Minecraft-style 3D text shadow */
+  text-shadow:
+    2px 2px 0 #0d2b08,
+    4px 4px 0 rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(134, 239, 172, 0.55);
+  /* Pixel art bevel + hard drop shadow */
   box-shadow:
-    0 0 24px rgba(74, 222, 128, 0.45),
-    0 0 64px rgba(74, 222, 128, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    inset 0 4px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.45),
+    inset 4px 0 0 rgba(255, 255, 255, 0.07),
+    inset -4px 0 0 rgba(0, 0, 0, 0.25),
+    5px 5px 0 rgba(0, 0, 0, 0.55),
+    0 0 32px rgba(74, 222, 128, 0.38),
+    0 0 72px rgba(74, 222, 128, 0.12);
   animation: launcher-pulse 2.8s ease-in-out infinite;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: filter 0.15s, transform 0.12s;
 }
 
 .launcher-play-btn:hover {
-  background: linear-gradient(135deg, #166534 0%, #15803d 45%, #16a34a 100%);
-  transform: translateY(-2px);
+  filter: brightness(1.18);
+  transform: translate(-1px, -1px);
   box-shadow:
-    0 0 36px rgba(74, 222, 128, 0.6),
-    0 0 80px rgba(74, 222, 128, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    inset 0 4px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.5),
+    inset 4px 0 0 rgba(255, 255, 255, 0.08),
+    inset -4px 0 0 rgba(0, 0, 0, 0.28),
+    7px 7px 0 rgba(0, 0, 0, 0.5),
+    0 0 48px rgba(74, 222, 128, 0.55),
+    0 0 100px rgba(74, 222, 128, 0.2);
 }
 
 .launcher-play-btn:active {
-  transform: translateY(0);
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 0 4px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.45),
+    inset 4px 0 0 rgba(255, 255, 255, 0.07),
+    inset -4px 0 0 rgba(0, 0, 0, 0.25),
+    3px 3px 0 rgba(0, 0, 0, 0.55),
+    0 0 20px rgba(74, 222, 128, 0.3);
+  filter: brightness(0.92);
 }
 
 .launcher-diff-error {
@@ -603,15 +625,23 @@ body {
   0%,
   100% {
     box-shadow:
-      0 0 24px rgba(74, 222, 128, 0.45),
-      0 0 64px rgba(74, 222, 128, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      inset 0 4px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -4px 0 rgba(0, 0, 0, 0.45),
+      inset 4px 0 0 rgba(255, 255, 255, 0.07),
+      inset -4px 0 0 rgba(0, 0, 0, 0.25),
+      5px 5px 0 rgba(0, 0, 0, 0.55),
+      0 0 32px rgba(74, 222, 128, 0.38),
+      0 0 72px rgba(74, 222, 128, 0.12);
   }
   50% {
     box-shadow:
-      0 0 38px rgba(74, 222, 128, 0.65),
-      0 0 96px rgba(74, 222, 128, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      inset 0 4px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -4px 0 rgba(0, 0, 0, 0.45),
+      inset 4px 0 0 rgba(255, 255, 255, 0.07),
+      inset -4px 0 0 rgba(0, 0, 0, 0.25),
+      5px 5px 0 rgba(0, 0, 0, 0.55),
+      0 0 52px rgba(74, 222, 128, 0.6),
+      0 0 110px rgba(74, 222, 128, 0.22);
   }
 }
 
