@@ -3830,7 +3830,8 @@ body {
   justify-content: center;
   pointer-events: none;
   opacity: 0;
-  transition: left 0.15s linear, top 0.15s linear;
+  /* no position transition — sprite is invisible while idle,
+     so it always teleports instantly to the clicked cell */
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.8));
 }
 
