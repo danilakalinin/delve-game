@@ -982,24 +982,36 @@ function stopLoop() {
   state.raf = null;
 }
 
+function canvasCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  const canvasAspect = canvas.width / canvas.height;
+  const rectAspect = rect.width / rect.height;
+  let rw, rh, ox, oy;
+  if (rectAspect > canvasAspect) {
+    rh = rect.height; rw = rh * canvasAspect;
+    ox = (rect.width - rw) / 2; oy = 0;
+  } else {
+    rw = rect.width; rh = rw / canvasAspect;
+    ox = 0; oy = (rect.height - rh) / 2;
+  }
+  return {
+    x: ((e.clientX - rect.left - ox) / rw) * canvas.width,
+    y: ((e.clientY - rect.top - oy) / rh) * canvas.height,
+  };
+}
+
 function bindUi() {
   canvas = document.getElementById("td-canvas");
   if (!canvas) return;
   ctx = canvas.getContext("2d");
 
   canvas.addEventListener("click", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    const { x, y } = canvasCoords(e);
     handleCanvasClick(x, y);
   });
 
   canvas.addEventListener("pointermove", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    state.hoverPos = {
-      x: ((e.clientX - rect.left) / rect.width) * canvas.width,
-      y: ((e.clientY - rect.top) / rect.height) * canvas.height,
-    };
+    state.hoverPos = canvasCoords(e);
   });
   canvas.addEventListener("pointerleave", () => {
     state.hoverPos = null;
