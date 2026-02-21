@@ -2,9 +2,38 @@ const KEY_TICKETS = "delve_td_tickets";
 const KEY_PICKAXE_INV = "delve_pickaxe_inventory_v1";
 const KEY_PICKAXE_EQUIPPED = "delve_pickaxe_equipped_v1";
 const KEY_GACHA_PITY = "delve_gacha_pity_v1";
+const KEY_SHARDS = "delve_pickaxe_shards_v1";
+const KEY_PICKAXE_LEVELS = "delve_pickaxe_levels_v1";
 const STARTER_TICKETS = 2;
 
-const RARITY_ORDER = {
+const SHARD_VALUES = {
+  common: 3,
+  uncommon: 8,
+  rare: 20,
+  epic: 50,
+  legendary: 120,
+  ultra: 300,
+};
+
+const MAX_LEVEL_BY_RARITY = {
+  common: 2,
+  uncommon: 3,
+  rare: 5,
+  epic: 5,
+  legendary: 5,
+  ultra: 5,
+};
+
+const UPGRADE_BASE_COST = {
+  common: 10,
+  uncommon: 15,
+  rare: 25,
+  epic: 40,
+  legendary: 60,
+  ultra: 100,
+};
+
+export const RARITY_ORDER = {
   common: 1,
   uncommon: 2,
   rare: 3,
@@ -13,7 +42,7 @@ const RARITY_ORDER = {
   ultra: 6,
 };
 
-const RARITY_LABEL = {
+export const RARITY_LABEL = {
   common: "Обычная",
   uncommon: "Необычная",
   rare: "Редкая",
@@ -22,7 +51,7 @@ const RARITY_LABEL = {
   ultra: "Ультра",
 };
 
-const RARITY_CLASS = {
+export const RARITY_CLASS = {
   common: "rarity-common",
   uncommon: "rarity-uncommon",
   rare: "rarity-rare",
@@ -188,7 +217,7 @@ function safeParse(json, fallback) {
   }
 }
 
-function getInventory() {
+export function getInventory() {
   const inv = safeParse(localStorage.getItem(KEY_PICKAXE_INV), {});
   return inv && typeof inv === "object" ? inv : {};
 }
@@ -222,7 +251,7 @@ function pickWeighted(pool) {
   return pool[pool.length - 1] ?? PICKAXES[0];
 }
 
-function formatEffects(effects) {
+export function formatEffects(effects) {
   const parts = [];
   if (effects.extraStartHp) parts.push(`+${effects.extraStartHp} HP`);
   if (effects.doubleOreChance)
@@ -242,6 +271,94 @@ function formatEffects(effects) {
     parts.push(`${Math.round(effects.gatherBonusChance * 100)}% доп. добычи`);
   return parts.length ? parts.join(" • ") : "Без эффектов";
 }
+
+/* ── Shard State ─────────────────────────────────────── */
+
+export function getShards() {
+  return Math.max(0, parseInt(localStorage.getItem(KEY_SHARDS) ?? "0", 10) || 0);
+}
+
+export function addShards(amount) {
+  if (amount <= 0) return;
+  localStorage.setItem(KEY_SHARDS, String(getShards() + amount));
+}
+
+export function spendShards(amount) {
+  const cur = getShards();
+  if (cur < amount) return false;
+  localStorage.setItem(KEY_SHARDS, String(cur - amount));
+  return true;
+}
+
+/* ── Pickaxe Levels ─────────────────────────────────── */
+
+function getPickaxeLevels() {
+  return safeParse(localStorage.getItem(KEY_PICKAXE_LEVELS), {});
+}
+
+function savePickaxeLevels(levels) {
+  localStorage.setItem(KEY_PICKAXE_LEVELS, JSON.stringify(levels));
+}
+
+export function getPickaxeLevel(pickaxeId) {
+  const levels = getPickaxeLevels();
+  return Math.max(1, Number(levels[pickaxeId]) || 1);
+}
+
+export function getMaxLevel(rarity) {
+  return MAX_LEVEL_BY_RARITY[rarity] ?? 1;
+}
+
+export function getUpgradeCost(rarity, currentLevel) {
+  const base = UPGRADE_BASE_COST[rarity] ?? 10;
+  return base * (currentLevel + 1);
+}
+
+export function upgradePickaxe(pickaxeId) {
+  const pickaxe = PICKAXES.find((p) => p.id === pickaxeId);
+  if (!pickaxe) return false;
+  const level = getPickaxeLevel(pickaxeId);
+  const maxLvl = getMaxLevel(pickaxe.rarity);
+  if (level >= maxLvl) return false;
+  const cost = getUpgradeCost(pickaxe.rarity, level);
+  if (!spendShards(cost)) return false;
+  const levels = getPickaxeLevels();
+  levels[pickaxeId] = level + 1;
+  savePickaxeLevels(levels);
+  return true;
+}
+
+export function getShardValue(rarity) {
+  return SHARD_VALUES[rarity] ?? 1;
+}
+
+/* ── Level-scaled Effects ───────────────────────────── */
+
+export function getLevelMultiplier(level) {
+  return 1 + 0.2 * (level - 1);
+}
+
+export function getScaledEffects(effects, level) {
+  if (!effects || level <= 1) return { ...effects };
+  const mult = getLevelMultiplier(level);
+  const scaled = {};
+  for (const [key, value] of Object.entries(effects)) {
+    if (typeof value !== "number") { scaled[key] = value; continue; }
+    if (
+      key === "extraStartHp" ||
+      key === "startOreBonus" ||
+      key === "revealOreAtStart" ||
+      key === "idleCollapseDelaySec"
+    ) {
+      scaled[key] = Math.round(value * mult);
+    } else {
+      scaled[key] = value * mult;
+    }
+  }
+  return scaled;
+}
+
+/* ── Owned list helper ──────────────────────────────── */
 
 function getOwnedPickaxes() {
   const inv = getInventory();
@@ -265,7 +382,10 @@ function updateGachaResult(result) {
 
   titleEl.textContent = `${result.pickaxe.name} (${RARITY_LABEL[result.pickaxe.rarity]})`;
   titleEl.className = `gacha-last-title ${RARITY_CLASS[result.pickaxe.rarity]}`;
-  bodyEl.textContent = `${result.isNew ? "Новая" : "Повтор"}: ${formatEffects(result.pickaxe.effects)}`;
+  const dupLabel = result.isNew
+    ? "Новая"
+    : `Повтор → +${result.shardsGained} ос.`;
+  bodyEl.textContent = `${dupLabel}: ${formatEffects(result.pickaxe.effects)}`;
 }
 
 function shortName(name) {
@@ -298,14 +418,19 @@ function renderGachaCollection() {
   const equipped = getEquippedPickaxe();
 
   tickets.textContent = String(getTickets());
+  const eqLevel = equipped ? getPickaxeLevel(equipped.id) : 1;
+  const eqMaxLvl = equipped ? getMaxLevel(equipped.rarity) : 1;
   equippedLabel.textContent = equipped
-    ? `${equipped.name} — ${formatEffects(equipped.effects)}`
+    ? `${equipped.name} ур.${eqLevel}/${eqMaxLvl} — ${formatEffects(getScaledEffects(equipped.effects, eqLevel))}`
     : "Нет экипированной кирки";
 
   mount.innerHTML = inv
     .map((p) => {
-      const ownedLabel = p.owned > 0 ? `×${p.owned}` : "—";
       const dimClass = p.owned === 0 ? "gacha-pickaxe-locked" : "";
+      const level = p.owned > 0 ? getPickaxeLevel(p.id) : 1;
+      const maxLvl = getMaxLevel(p.rarity);
+      const levelLabel = p.owned > 0 ? `ур.${level}/${maxLvl}` : "—";
+      const fx = p.owned > 0 ? formatEffects(getScaledEffects(p.effects, level)) : formatEffects(p.effects);
       return `
       <div class="gacha-pickaxe-card ${RARITY_CLASS[p.rarity]} ${equipped?.id === p.id ? "active" : ""} ${dimClass}">
         <div class="gacha-pickaxe-head">
@@ -313,8 +438,8 @@ function renderGachaCollection() {
           <div class="gacha-pickaxe-rarity ${RARITY_CLASS[p.rarity]}">${RARITY_LABEL[p.rarity]}</div>
         </div>
         <div class="gacha-pickaxe-desc">${p.desc}</div>
-        <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
-        <div class="gacha-pickaxe-foot"><span>${ownedLabel}</span></div>
+        <div class="gacha-pickaxe-effects">${fx}</div>
+        <div class="gacha-pickaxe-foot"><span>${levelLabel}</span></div>
       </div>`;
     })
     .join("");
@@ -331,8 +456,10 @@ function renderInventoryCollection() {
   const ownedTotal = inv.reduce((sum, p) => sum + p.owned, 0);
   const uniqueOwned = inv.filter((p) => p.owned > 0).length;
 
+  const eqLevel = equipped ? getPickaxeLevel(equipped.id) : 1;
+  const eqMaxLvl = equipped ? getMaxLevel(equipped.rarity) : 1;
   equippedLabel.textContent = equipped
-    ? `${equipped.name} — ${formatEffects(equipped.effects)}`
+    ? `${equipped.name} ур.${eqLevel}/${eqMaxLvl} — ${formatEffects(getScaledEffects(equipped.effects, eqLevel))}`
     : "Нет экипированной кирки";
   stats.textContent = `${uniqueOwned} / ${PICKAXES.length} уник.`;
 
@@ -348,6 +475,9 @@ function renderInventoryCollection() {
   mount.innerHTML = owned
     .map((p) => {
       const active = equipped?.id === p.id;
+      const level = getPickaxeLevel(p.id);
+      const maxLvl = getMaxLevel(p.rarity);
+      const fx = formatEffects(getScaledEffects(p.effects, level));
       const btnLabel = active ? "✓ Экипировано" : "Экипировать";
       return `
       <div class="gacha-pickaxe-card ${RARITY_CLASS[p.rarity]} ${active ? "active" : ""}">
@@ -356,9 +486,9 @@ function renderInventoryCollection() {
           <div class="gacha-pickaxe-rarity ${RARITY_CLASS[p.rarity]}">${RARITY_LABEL[p.rarity]}</div>
         </div>
         <div class="gacha-pickaxe-desc">${p.desc}</div>
-        <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
+        <div class="gacha-pickaxe-effects">${fx}</div>
         <div class="gacha-pickaxe-foot">
-          <span>×${p.owned}</span>
+          <span>ур.${level}/${maxLvl}</span>
           <button class="btn-primary gacha-equip-btn ${active ? "gacha-equip-active" : ""}" data-inventory-pickaxe-id="${p.id}">${btnLabel}</button>
         </div>
       </div>`;
@@ -391,8 +521,14 @@ function rollOneInternal() {
   const pickaxe = pickWeighted(pool);
   const inv = getInventory();
   const prev = Math.max(0, Number(inv[pickaxe.id]) || 0);
-  inv[pickaxe.id] = prev + 1;
-  saveInventory(inv);
+  let shardsGained = 0;
+  if (prev > 0) {
+    shardsGained = SHARD_VALUES[pickaxe.rarity] ?? 1;
+    addShards(shardsGained);
+  } else {
+    inv[pickaxe.id] = 1;
+    saveInventory(inv);
+  }
 
   const rarityRank = RARITY_ORDER[pickaxe.rarity] ?? 1;
   const nextPity = {
@@ -409,6 +545,7 @@ function rollOneInternal() {
   return {
     pickaxe,
     isNew: prev === 0,
+    shardsGained,
   };
 }
 
@@ -651,6 +788,8 @@ export function resetGacha() {
   localStorage.removeItem(KEY_PICKAXE_INV);
   localStorage.removeItem(KEY_PICKAXE_EQUIPPED);
   localStorage.removeItem(KEY_GACHA_PITY);
+  localStorage.removeItem(KEY_SHARDS);
+  localStorage.removeItem(KEY_PICKAXE_LEVELS);
 }
 
 export function getEquippedPickaxeId() {
@@ -674,11 +813,15 @@ export function equipPickaxe(id) {
 
 export function getEquippedPickaxeEffects() {
   const pickaxe = getEquippedPickaxe();
-  return pickaxe?.effects ?? {};
+  if (!pickaxe) return {};
+  const level = getPickaxeLevel(pickaxe.id);
+  return getScaledEffects(pickaxe.effects, level);
 }
 
 export function getEquippedPickaxeSummary() {
   const pickaxe = getEquippedPickaxe();
   if (!pickaxe) return "Без кирки";
-  return `${pickaxe.name} (${RARITY_LABEL[pickaxe.rarity]})`;
+  const level = getPickaxeLevel(pickaxe.id);
+  const maxLvl = getMaxLevel(pickaxe.rarity);
+  return `${pickaxe.name} ур.${level}/${maxLvl} (${RARITY_LABEL[pickaxe.rarity]})`;
 }

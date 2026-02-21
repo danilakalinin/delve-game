@@ -121,7 +121,13 @@ import {
   resetGacha,
   getEquippedPickaxeEffects,
   getEquippedPickaxeSummary,
+  getShards,
 } from "./pickaxe-gacha.js";
+import {
+  buildForgeScreen,
+  initForgeScreen,
+  renderForgeScreen,
+} from "./forge-ui.js";
 
 // ─── МЕТА-ПРОГРЕССИЯ ──────────────────────────────────────────────────────────
 
@@ -362,6 +368,8 @@ function getDelveStorageSnapshot() {
     "delve_pickaxe_inv_v1",
     "delve_pickaxe_equipped_v1",
     "delve_gacha_pity_v1",
+    "delve_pickaxe_shards_v1",
+    "delve_pickaxe_levels_v1",
   ]);
   const out = {};
   for (let i = 0; i < localStorage.length; i += 1) {
@@ -458,6 +466,7 @@ document.getElementById("app").innerHTML = `
         <button class="topbar-btn topbar-btn-nav" id="open-td-btn">🛡 TD</button>
         <button class="topbar-btn topbar-btn-nav" id="open-gacha-btn">🎰 Гача</button>
         <button class="topbar-btn topbar-btn-nav" id="open-inventory-btn">🎒 Инвентарь</button>
+        <button class="topbar-btn topbar-btn-nav" id="open-forge-btn">🔨 Кузница</button>
         <div class="topbar-separator"></div>
         <div class="topbar-music-group">
           <button class="topbar-btn topbar-btn-icon" id="music-mute-btn" type="button">🔊</button>
@@ -598,6 +607,7 @@ document.getElementById("app").innerHTML = `
   ${buildTdScreen()}
   ${buildGachaScreen()}
   ${buildInventoryScreen()}
+  ${buildForgeScreen()}
 
   <!-- ══ ИГРА ══ -->
   <div id="screen-game" class="screen">
@@ -814,6 +824,7 @@ const screenGuild = document.getElementById("screen-guild");
 const screenTd = document.getElementById("screen-td");
 const screenGacha = document.getElementById("screen-gacha");
 const screenInventory = document.getElementById("screen-inventory");
+const screenForge = document.getElementById("screen-forge");
 const screenGame = document.getElementById("screen-game");
 const screenResult = document.getElementById("screen-result");
 const diffOptions = document.getElementById("diff-options");
@@ -831,6 +842,7 @@ const openShopBtn = document.getElementById("open-shop-btn");
 const openTdBtn = document.getElementById("open-td-btn");
 const openGachaBtn = document.getElementById("open-gacha-btn");
 const openInventoryBtn = document.getElementById("open-inventory-btn");
+const openForgeBtn = document.getElementById("open-forge-btn");
 const statsContent = document.getElementById("stats-content");
 const helpPanel = document.getElementById("help-panel");
 const helpBtn = document.getElementById("help-btn");
@@ -1639,6 +1651,11 @@ function openGachaScreen() {
 function openInventoryScreen() {
   renderInventoryScreen();
   setActive(screenInventory);
+}
+
+function openForgeScreen() {
+  renderForgeScreen();
+  setActive(screenForge);
 }
 
 // ─── HUD ──────────────────────────────────────────────────────────────────────
@@ -2501,6 +2518,9 @@ openGachaBtn?.addEventListener("click", () => {
 openInventoryBtn?.addEventListener("click", () => {
   openInventoryScreen();
 });
+openForgeBtn?.addEventListener("click", () => {
+  openForgeScreen();
+});
 depthUpgradeBtn?.addEventListener("click", () => {
   const depth = getMineDepthLevel();
   if (depth >= MINE_DEPTH_MAX) return;
@@ -2530,6 +2550,7 @@ function setActive(s) {
     screenTd,
     screenGacha,
     screenInventory,
+    screenForge,
     screenGame,
     screenResult,
   ].forEach((x) => x.classList.remove("active"));
@@ -3121,6 +3142,18 @@ safeInit("gacha-ui", () =>
 safeInit("inventory-ui", () =>
   initInventoryScreen({
     onBack: showStartScreen,
+  }),
+);
+safeInit("forge-ui", () =>
+  initForgeScreen({
+    onBack: showStartScreen,
+    onStateChanged: () => {
+      refreshStatusBar();
+      renderStatsPanel();
+      renderUpgrades();
+      if (screenInventory.classList.contains("active")) renderInventoryScreen();
+      if (screenGacha.classList.contains("active")) renderGachaScreen();
+    },
   }),
 );
 setShopSaleListener(showShopToast);
