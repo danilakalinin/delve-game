@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Rubik+Pixels&display=swap");
 
 /* ─── RESET ───────────────────────────────────────────────── */
 * {
@@ -531,9 +532,9 @@ body {
 }
 
 .launcher-play-btn {
-  font-family: var(--font-heading);
-  font-size: clamp(16px, 2.2vw, 24px);
-  font-weight: 700;
+  font-family: "Rubik Pixels", var(--font-heading), monospace;
+  font-size: clamp(14px, 2vw, 20px);
+  font-weight: 400;
   color: #fff;
   background: linear-gradient(135deg, #14532d 0%, #166534 45%, #15803d 100%);
   border: 2px solid #22c55e;
