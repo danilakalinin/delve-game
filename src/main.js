@@ -472,7 +472,7 @@ document.getElementById("app").innerHTML = `
       <div class="topbar-actions">
         <button class="topbar-btn topbar-btn-nav" id="open-shop-btn">🏪 Магазин</button>
         <button class="topbar-btn topbar-btn-nav" id="open-td-btn">🛡 TD</button>
-        <button class="topbar-btn topbar-btn-nav" id="open-gacha-btn">🎰 Гача</button>
+        <button class="topbar-btn topbar-btn-nav" id="open-gacha-btn">🎰 Казино</button>
         <button class="topbar-btn topbar-btn-nav" id="open-inventory-btn">🎒 Инвентарь</button>
         <button class="topbar-btn topbar-btn-nav" id="open-forge-btn">🔨 Кузница</button>
         <div class="topbar-separator"></div>
@@ -491,22 +491,17 @@ document.getElementById("app").innerHTML = `
     <!-- ── Основной контент ── -->
     <div class="start-content">
 
-      <!-- Hero: Экспедиция -->
-      <div class="card start-expedition-card">
-        <div class="card-header">
-          <span class="card-header-icon">🗺</span>
-          <span class="card-header-text">Выберите вылазку</span>
-        </div>
-        <div class="card-body card-body-flush">
-          <div id="diff-options" class="diff-options-grid"></div>
-          <div class="depth-panel" id="depth-panel">
-            <div class="depth-info">
-              <div class="depth-head">⛏ Глубина шахты: <strong id="depth-level">1</strong></div>
-              <div class="depth-sub" id="depth-effects">Бонус руды: +0% • Риск обвалов: +0%</div>
-              <div class="depth-sub" id="depth-idle">AFK-обвал: без штрафа</div>
-            </div>
-            <button class="btn-modern btn-accent depth-upgrade-btn" id="depth-upgrade-btn">Углубить шахту</button>
+      <!-- Launcher Hero -->
+      <div class="launcher-hero">
+        <div class="launcher-play-btn">▶&nbsp;ИГРАТЬ&nbsp;В&nbsp;САПЁР</div>
+        <div id="diff-options" class="diff-options-grid"></div>
+        <div class="depth-panel" id="depth-panel">
+          <div class="depth-info">
+            <div class="depth-head">⛏ Глубина шахты: <strong id="depth-level">1</strong></div>
+            <div class="depth-sub" id="depth-effects">Бонус руды: +0% • Риск обвалов: +0%</div>
+            <div class="depth-sub" id="depth-idle">AFK-обвал: без штрафа</div>
           </div>
+          <button class="btn-modern btn-accent depth-upgrade-btn" id="depth-upgrade-btn">Углубить шахту</button>
         </div>
       </div>
 
@@ -1402,7 +1397,7 @@ function refreshEndgameButtons() {
   }
   if (openGachaBtn) {
     openGachaBtn.disabled = !gachaOpen;
-    openGachaBtn.textContent = gachaOpen ? "🎰 ГАЧА" : "🎰 ГАЧА 🔒";
+    openGachaBtn.textContent = gachaOpen ? "🎰 Казино" : "🎰 Казино 🔒";
   }
   if (openInventoryBtn) {
     openInventoryBtn.disabled = false;

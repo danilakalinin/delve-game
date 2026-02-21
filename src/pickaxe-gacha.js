@@ -570,7 +570,7 @@ export function buildGachaScreen() {
     <nav class="gacha-topbar">
       <div class="gacha-topbar-brand">
         <span class="gacha-topbar-emoji">🎰</span>
-        <span class="gacha-topbar-title">Бюро круток</span>
+        <span class="gacha-topbar-title">Казино</span>
       </div>
       <div class="gacha-topbar-stats">
         <div class="resource-chip">
