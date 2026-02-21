@@ -6,24 +6,122 @@ const KEY_DAILIES = "delve_dailies_v1";
 
 const QUEST_POOL = [
   // Майнинг
-  { id: "run_complete_1", type: "run_any",    target: 1,  label: "Заверши 1 рейд",            icon: "⛏", reward: 15 },
-  { id: "run_complete_3", type: "run_any",    target: 3,  label: "Заверши 3 рейда",           icon: "⛏", reward: 35 },
-  { id: "run_clear",      type: "run_clear",  target: 1,  label: "Зачисти шахту полностью",    icon: "🏆", reward: 30 },
-  { id: "run_escape",     type: "run_escape", target: 1,  label: "Сбеги из шахты",             icon: "🏃", reward: 20 },
-  { id: "ore_mine_20",    type: "ore_mine",   target: 20, label: "Добудь 20 руды",             icon: "💎", reward: 15 },
-  { id: "ore_mine_60",    type: "ore_mine",   target: 60, label: "Добудь 60 руды",             icon: "💎", reward: 30 },
+  {
+    id: "run_complete_1",
+    type: "run_any",
+    target: 1,
+    label: "Заверши 1 рейд",
+    icon: "⛏",
+    reward: 15,
+  },
+  {
+    id: "run_complete_3",
+    type: "run_any",
+    target: 3,
+    label: "Заверши 3 рейда",
+    icon: "⛏",
+    reward: 35,
+  },
+  {
+    id: "run_clear",
+    type: "run_clear",
+    target: 1,
+    label: "Зачисти шахту полностью",
+    icon: "🏆",
+    reward: 30,
+  },
+  {
+    id: "run_escape",
+    type: "run_escape",
+    target: 1,
+    label: "Сбеги из шахты",
+    icon: "🏃",
+    reward: 20,
+  },
+  {
+    id: "ore_mine_20",
+    type: "ore_mine",
+    target: 20,
+    label: "Добудь 20 руды",
+    icon: "💎",
+    reward: 15,
+  },
+  {
+    id: "ore_mine_60",
+    type: "ore_mine",
+    target: 60,
+    label: "Добудь 60 руды",
+    icon: "💎",
+    reward: 30,
+  },
   // Магазин
-  { id: "ore_sell_15",    type: "ore_sell",   target: 15, label: "Продай 15 руды в магазине",  icon: "🏪", reward: 15 },
-  { id: "ore_sell_40",    type: "ore_sell",   target: 40, label: "Продай 40 руды в магазине",  icon: "🏪", reward: 25 },
-  { id: "gold_earn_80",   type: "gold_earn",  target: 80, label: "Заработай 80 золота",        icon: "💰", reward: 20 },
+  {
+    id: "ore_sell_15",
+    type: "ore_sell",
+    target: 15,
+    label: "Продай 15 руды в магазине",
+    icon: "🏪",
+    reward: 15,
+  },
+  {
+    id: "ore_sell_40",
+    type: "ore_sell",
+    target: 40,
+    label: "Продай 40 руды в магазине",
+    icon: "🏪",
+    reward: 25,
+  },
+  {
+    id: "gold_earn_80",
+    type: "gold_earn",
+    target: 80,
+    label: "Заработай 80 золота",
+    icon: "💰",
+    reward: 20,
+  },
   // TD
-  { id: "td_wave_1",      type: "td_wave",    target: 1,  label: "Очисти 1 волну в TD",        icon: "🛡", reward: 20 },
-  { id: "td_wave_3",      type: "td_wave",    target: 3,  label: "Очисти 3 волны в TD",        icon: "🛡", reward: 40 },
+  {
+    id: "td_wave_1",
+    type: "td_wave",
+    target: 1,
+    label: "Очисти 1 волну в TD",
+    icon: "🛡",
+    reward: 20,
+  },
+  {
+    id: "td_wave_3",
+    type: "td_wave",
+    target: 3,
+    label: "Очисти 3 волны в TD",
+    icon: "🛡",
+    reward: 40,
+  },
   // Гача
-  { id: "gacha_pull_1",   type: "gacha_pull", target: 1,  label: "Сделай 1 крутку",            icon: "🎰", reward: 15 },
-  { id: "gacha_pull_5",   type: "gacha_pull", target: 5,  label: "Сделай 5 круток",            icon: "🎰", reward: 35 },
+  {
+    id: "gacha_pull_1",
+    type: "gacha_pull",
+    target: 1,
+    label: "Сделай 1 крутку",
+    icon: "🎰",
+    reward: 15,
+  },
+  {
+    id: "gacha_pull_5",
+    type: "gacha_pull",
+    target: 5,
+    label: "Сделай 5 круток",
+    icon: "🎰",
+    reward: 35,
+  },
   // Расходники
-  { id: "consumable_1",   type: "consumable", target: 1,  label: "Используй расходник",        icon: "🧪", reward: 15 },
+  {
+    id: "consumable_1",
+    type: "consumable",
+    target: 1,
+    label: "Используй расходник",
+    icon: "🧪",
+    reward: 15,
+  },
 ];
 
 const DAILY_BONUS = {
@@ -73,7 +171,13 @@ function loadState() {
   const today = getTodayKey();
 
   if (!raw) {
-    return { date: today, progress: {}, claimed: [], bonusDate: null, bonusStreak: 0 };
+    return {
+      date: today,
+      progress: {},
+      claimed: [],
+      bonusDate: null,
+      bonusStreak: 0,
+    };
   }
 
   // New day — reset quest progress and claimed
@@ -115,14 +219,16 @@ export function getDailyQuests() {
   const today = getTodayKey();
   const s = loadState();
   const ids = getDailyQuestIds(today);
-  return ids.map((id) => {
-    const q = QUEST_POOL.find((x) => x.id === id);
-    if (!q) return null;
-    const progress = Math.min(s.progress[q.type] ?? 0, q.target);
-    const completed = progress >= q.target;
-    const claimed = s.claimed.includes(id);
-    return { ...q, progress, completed, claimed };
-  }).filter(Boolean);
+  return ids
+    .map((id) => {
+      const q = QUEST_POOL.find((x) => x.id === id);
+      if (!q) return null;
+      const progress = Math.min(s.progress[q.type] ?? 0, q.target);
+      const completed = progress >= q.target;
+      const claimed = s.claimed.includes(id);
+      return { ...q, progress, completed, claimed };
+    })
+    .filter(Boolean);
 }
 
 export function claimDailyQuest(id) {
@@ -199,8 +305,10 @@ export function initDailyCard({ onClaimQuest, onClaimBonus }) {
 function streakDots(current, nextStreak) {
   return [1, 2, 3]
     .map((i) => {
-      if (i < nextStreak) return `<span class="daily-streak-dot daily-streak-done">●</span>`;
-      if (i === nextStreak) return `<span class="daily-streak-dot daily-streak-current">●</span>`;
+      if (i < nextStreak)
+        return `<span class="daily-streak-dot daily-streak-done">●</span>`;
+      if (i === nextStreak)
+        return `<span class="daily-streak-dot daily-streak-current">●</span>`;
       return `<span class="daily-streak-dot daily-streak-empty">○</span>`;
     })
     .join("");
@@ -222,18 +330,19 @@ export function renderDailyCard() {
     : `<span class="daily-claimed-label">✓ Получено</span>`;
 
   // Quest rows
-  const questRows = quests.map((q) => {
-    const pct = Math.round((q.progress / q.target) * 100);
-    const progressText = `${q.progress} / ${q.target}`;
-    let actionBtn = "";
-    if (q.claimed) {
-      actionBtn = `<span class="daily-claimed-label">✓ +${q.reward} ос.</span>`;
-    } else if (q.completed) {
-      actionBtn = `<button class="btn-primary daily-claim-btn" data-daily-quest-id="${q.id}">+${q.reward} ос.</button>`;
-    } else {
-      actionBtn = `<span class="daily-reward-hint">+${q.reward} ос.</span>`;
-    }
-    return `
+  const questRows = quests
+    .map((q) => {
+      const pct = Math.round((q.progress / q.target) * 100);
+      const progressText = `${q.progress} / ${q.target}`;
+      let actionBtn = "";
+      if (q.claimed) {
+        actionBtn = `<span class="daily-claimed-label">✓ +${q.reward} ос.</span>`;
+      } else if (q.completed) {
+        actionBtn = `<button class="btn-primary daily-claim-btn" data-daily-quest-id="${q.id}">+${q.reward} ос.</button>`;
+      } else {
+        actionBtn = `<span class="daily-reward-hint">+${q.reward} ос.</span>`;
+      }
+      return `
     <div class="daily-quest-row ${q.claimed ? "daily-quest-done" : ""}">
       <span class="daily-quest-icon">${q.icon}</span>
       <div class="daily-quest-body">
@@ -247,13 +356,14 @@ export function renderDailyCard() {
       </div>
       <div class="daily-quest-action">${actionBtn}</div>
     </div>`;
-  }).join("");
+    })
+    .join("");
 
   mount.innerHTML = `
   <div class="card daily-card">
     <div class="card-header">
       <span class="card-header-icon">📅</span>
-      <span class="card-header-text">Дейлики</span>
+      <span class="card-header-text">Ежедневные задания</span>
     </div>
     <div class="card-body daily-card-body">
 

@@ -185,7 +185,10 @@ function getMineDepthLevel() {
 }
 
 function setMineDepthLevel(level) {
-  const clamped = Math.max(MINE_DEPTH_MIN, Math.min(MINE_DEPTH_MAX, Math.floor(level)));
+  const clamped = Math.max(
+    MINE_DEPTH_MIN,
+    Math.min(MINE_DEPTH_MAX, Math.floor(level)),
+  );
   localStorage.setItem(MINE_DEPTH_KEY, String(clamped));
 }
 
@@ -210,9 +213,24 @@ function getMineDepthIdlePenaltySec(level = getMineDepthLevel()) {
 // Чем глубже — тем богаче состав. На глубине 1 используются базовые шансы из DIFFICULTIES.
 
 const DEEP_ORE_RATIOS = {
-  easy:   { [ORE_COPPER]: 0.00, [ORE_SILVER]: 0.70, [ORE_GOLD]: 0.28, [ORE_DIAMOND]: 0.02 },
-  normal: { [ORE_COPPER]: 0.05, [ORE_SILVER]: 0.40, [ORE_GOLD]: 0.42, [ORE_DIAMOND]: 0.13 },
-  hard:   { [ORE_COPPER]: 0.00, [ORE_SILVER]: 0.20, [ORE_GOLD]: 0.48, [ORE_DIAMOND]: 0.32 },
+  easy: {
+    [ORE_COPPER]: 0.0,
+    [ORE_SILVER]: 0.7,
+    [ORE_GOLD]: 0.28,
+    [ORE_DIAMOND]: 0.02,
+  },
+  normal: {
+    [ORE_COPPER]: 0.05,
+    [ORE_SILVER]: 0.4,
+    [ORE_GOLD]: 0.42,
+    [ORE_DIAMOND]: 0.13,
+  },
+  hard: {
+    [ORE_COPPER]: 0.0,
+    [ORE_SILVER]: 0.2,
+    [ORE_GOLD]: 0.48,
+    [ORE_DIAMOND]: 0.32,
+  },
 };
 
 // Линейная интерполяция от базового состава → глубокого состава
@@ -242,28 +260,41 @@ function scaleOreChanceMap(baseMap, mult, maxTotal) {
   return out;
 }
 
-function getDepthDifficultyOverrides(diffKey, depthLevel = getMineDepthLevel()) {
+function getDepthDifficultyOverrides(
+  diffKey,
+  depthLevel = getMineDepthLevel(),
+) {
   const base = DIFFICULTIES[diffKey];
   if (!base) return {};
-  const oreMult       = getMineDepthOreMultiplier(depthLevel);
+  const oreMult = getMineDepthOreMultiplier(depthLevel);
   const unstableBonus = getMineDepthUnstableBonus(depthLevel);
-  const nextUnstableChance = Math.min(0.85, base.unstableChance + unstableBonus);
-  const maxOreTotal   = Math.max(0.02, 1 - nextUnstableChance - 0.02);
-  const idlePenalty   = getMineDepthIdlePenaltySec(depthLevel);
+  const nextUnstableChance = Math.min(
+    0.85,
+    base.unstableChance + unstableBonus,
+  );
+  const maxOreTotal = Math.max(0.02, 1 - nextUnstableChance - 0.02);
+  const idlePenalty = getMineDepthIdlePenaltySec(depthLevel);
 
   // Пассивный бонус «Шахтерский опыт» — сокращает штраф AFK-обвала
-  const passives   = getProspectorPassiveEffects();
-  const idleBonus  = passives.idleCollapseBonus ?? 0;
+  const passives = getProspectorPassiveEffects();
+  const idleBonus = passives.idleCollapseBonus ?? 0;
 
   // Состав руды: линейно сдвигаем от базового к «глубокому» по мере прокачки глубины
   const t = MINE_DEPTH_MAX > 1 ? (depthLevel - 1) / (MINE_DEPTH_MAX - 1) : 0;
-  const scaledChances  = scaleOreChanceMap(base.oreChances, oreMult, maxOreTotal);
+  const scaledChances = scaleOreChanceMap(
+    base.oreChances,
+    oreMult,
+    maxOreTotal,
+  );
   const shiftedChances = shiftOreComposition(scaledChances, diffKey, t);
 
   return {
-    unstableChance:  nextUnstableChance,
-    idleCollapseSec: Math.max(10, base.idleCollapseSec - idlePenalty + idleBonus),
-    oreChances:      shiftedChances,
+    unstableChance: nextUnstableChance,
+    idleCollapseSec: Math.max(
+      10,
+      base.idleCollapseSec - idlePenalty + idleBonus,
+    ),
+    oreChances: shiftedChances,
   };
 }
 
@@ -565,7 +596,7 @@ document.getElementById("app").innerHTML = `
             </div>
           </div>
 
-          <!-- Дейлики -->
+          <!-- Ежедневные задания -->
           <div id="daily-card-mount"></div>
 
           <!-- Справка -->
@@ -958,7 +989,13 @@ function refreshStatusBar() {
 }
 
 function renderDepthPanel() {
-  if (!depthPanel || !depthLevelEl || !depthEffectsEl || !depthIdleEl || !depthUpgradeBtn) {
+  if (
+    !depthPanel ||
+    !depthLevelEl ||
+    !depthEffectsEl ||
+    !depthIdleEl ||
+    !depthUpgradeBtn
+  ) {
     return;
   }
   const depth = getMineDepthLevel();
@@ -971,9 +1008,10 @@ function renderDepthPanel() {
 
   depthLevelEl.textContent = String(depth);
   depthEffectsEl.textContent = `Бонус руды: +${oreBonusPct}% • Риск обвалов: +${unstableBonusPct}%`;
-  depthIdleEl.textContent = idlePenaltySec > 0
-    ? `AFK-обвал быстрее на ${idlePenaltySec}с`
-    : "AFK-обвал: без штрафа";
+  depthIdleEl.textContent =
+    idlePenaltySec > 0
+      ? `AFK-обвал быстрее на ${idlePenaltySec}с`
+      : "AFK-обвал: без штрафа";
 
   depthUpgradeBtn.disabled = atCap || gold < nextCost;
   if (atCap) {
@@ -996,7 +1034,7 @@ let runToolInventory = {};
 let bgMusicStarted = false;
 let runPickaxeEffects = {};
 let runSecondWindUsed = false;
-let runShieldActive   = false;
+let runShieldActive = false;
 let mobileFlagMode = false;
 const bgMusic = new Audio(bgMusicSrc);
 bgMusic.loop = true;
@@ -1147,9 +1185,9 @@ function nextOreTier(oreType) {
 
 function grantRunOre(oreType, baseAmount = 1) {
   if (!state || baseAmount <= 0) return 0;
-  const t       = oreType ?? ORE_COPPER;
+  const t = oreType ?? ORE_COPPER;
   const passives = getProspectorPassiveEffects();
-  let granted   = 0;
+  let granted = 0;
   for (let i = 0; i < baseAmount; i += 1) {
     granted += calcOreGainMultiplier();
     // «Рудная жилка»: 15% шанс получить +1 руду следующего уровня
@@ -1202,8 +1240,8 @@ function getConsumableDepthPrice(basePrice, depth) {
 // Строка с процентным составом руды на текущей глубине (для предпросмотра)
 function getOreCompositionLine(diffKey, depth) {
   const overrides = getDepthDifficultyOverrides(diffKey, depth);
-  const chances   = overrides.oreChances ?? {};
-  const total     = Object.values(chances).reduce((sum, v) => sum + v, 0);
+  const chances = overrides.oreChances ?? {};
+  const total = Object.values(chances).reduce((sum, v) => sum + v, 0);
   if (total <= 0) return "—";
   return Object.entries(chances)
     .filter(([, v]) => v > 0.001)
@@ -1219,8 +1257,8 @@ function renderPreRaidConsumables() {
   const wrap = document.getElementById("pre-raid-consumables");
   if (!wrap) return;
 
-  const depth    = getMineDepthLevel();
-  const gold     = getGold();
+  const depth = getMineDepthLevel();
+  const gold = getGold();
   const clubOpen = hasProspectorsUnlocked();
 
   if (!clubOpen) {
@@ -1233,8 +1271,8 @@ function renderPreRaidConsumables() {
 
   const inventory = getProspectorInventory();
   wrap.innerHTML = PROSPECTOR_TOOLS.map((tool) => {
-    const price  = getConsumableDepthPrice(tool.basePrice, depth);
-    const stock  = inventory[tool.id] ?? 0;
+    const price = getConsumableDepthPrice(tool.basePrice, depth);
+    const stock = inventory[tool.id] ?? 0;
     const canBuy = gold >= price;
     return `
       <div class="pre-raid-item">
@@ -1257,8 +1295,8 @@ function renderPreRaidConsumables() {
 
   wrap.querySelectorAll("[data-consumable]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const toolId   = btn.getAttribute("data-consumable");
-      const price    = parseInt(btn.getAttribute("data-price") ?? "0", 10);
+      const toolId = btn.getAttribute("data-consumable");
+      const price = parseInt(btn.getAttribute("data-price") ?? "0", 10);
       if (!spendGold(price)) return;
       addConsumableToInventory(toolId, 1, price);
       updateStats((s) => {
@@ -1277,16 +1315,17 @@ function renderPreRaidConsumables() {
 function openPreRaidModal(diffKey) {
   _preRaidDiffKey = diffKey;
   const depth = getMineDepthLevel();
-  const diff  = DIFFICULTIES[diffKey];
+  const diff = DIFFICULTIES[diffKey];
 
   const titleEl = document.getElementById("pre-raid-title");
-  if (titleEl) titleEl.textContent = `🎒 ПОДГОТОВКА — ${diff.label.toUpperCase()} · Глубина ${depth}`;
+  if (titleEl)
+    titleEl.textContent = `🎒 ПОДГОТОВКА — ${diff.label.toUpperCase()} · Глубина ${depth}`;
 
   const infoEl = document.getElementById("pre-raid-depth-info");
   if (infoEl) {
-    const orePct    = Math.round((getMineDepthOreMultiplier(depth) - 1) * 100);
-    const riskPct   = Math.round(getMineDepthUnstableBonus(depth) * 100);
-    const oreLine   = getOreCompositionLine(diffKey, depth);
+    const orePct = Math.round((getMineDepthOreMultiplier(depth) - 1) * 100);
+    const riskPct = Math.round(getMineDepthUnstableBonus(depth) * 100);
+    const oreLine = getOreCompositionLine(diffKey, depth);
     infoEl.innerHTML = `
       <div class="pre-raid-info-row">Бонус руды: <strong>+${orePct}%</strong> · Риск обвалов: <strong>+${riskPct}%</strong></div>
       <div class="pre-raid-info-row pre-raid-ore-mix">Состав: ${oreLine}</div>`;
@@ -1334,8 +1373,12 @@ function showStartScreen() {
     },
   };
   const depthLevel = getMineDepthLevel();
-  const oreBonusPct = Math.round((getMineDepthOreMultiplier(depthLevel) - 1) * 100);
-  const unstableBonusPct = Math.round(getMineDepthUnstableBonus(depthLevel) * 100);
+  const oreBonusPct = Math.round(
+    (getMineDepthOreMultiplier(depthLevel) - 1) * 100,
+  );
+  const unstableBonusPct = Math.round(
+    getMineDepthUnstableBonus(depthLevel) * 100,
+  );
 
   Object.entries(DIFFICULTIES).forEach(([key, d]) => {
     const btn = document.createElement("button");
@@ -1344,13 +1387,14 @@ function showStartScreen() {
     const keepPct = Math.round((ESCAPE_KEEP_BASE[key] ?? 0.2) * 100);
     // Показываем доминирующий тип руды на текущей глубине
     const oreOverrides = getDepthDifficultyOverrides(key, depthLevel);
-    const oreChances   = oreOverrides.oreChances ?? {};
-    const oreTotal     = Object.values(oreChances).reduce((s, v) => s + v, 0);
-    const dominant     = oreTotal > 0
-      ? Object.entries(oreChances).sort(([, a], [, b]) => b - a)[0]
-      : null;
-    const dominantStr  = dominant
-      ? ` · ${ORE_CONFIG[dominant[0]].label} ${Math.round(dominant[1] / oreTotal * 100)}%`
+    const oreChances = oreOverrides.oreChances ?? {};
+    const oreTotal = Object.values(oreChances).reduce((s, v) => s + v, 0);
+    const dominant =
+      oreTotal > 0
+        ? Object.entries(oreChances).sort(([, a], [, b]) => b - a)[0]
+        : null;
+    const dominantStr = dominant
+      ? ` · ${ORE_CONFIG[dominant[0]].label} ${Math.round((dominant[1] / oreTotal) * 100)}%`
       : "";
 
     btn.innerHTML = `
@@ -1455,19 +1499,16 @@ function renderUpgrades() {
     };
     const bought = boughtMap[upg.id] ?? isUpgBought(upg.id);
     const currency = upg.currency ?? "ore";
-    const lockedByChain =
-      (upg.id === "td" && !hasGuildUnlocked());
+    const lockedByChain = upg.id === "td" && !hasGuildUnlocked();
     const canAfford =
       !bought &&
       !lockedByChain &&
       (currency === "gold" ? getGold() >= upg.cost : copperBank >= upg.cost);
-    const costLabel = upg.id === "shop"
-      ? `${upg.cost} меди`
-      : `${upg.cost} ${currency === "gold" ? "монет" : "руды"}`;
-    const lockText =
-      upg.id === "td"
-        ? "Сначала открой Гильдию шахтеров"
-        : "";
+    const costLabel =
+      upg.id === "shop"
+        ? `${upg.cost} меди`
+        : `${upg.cost} ${currency === "gold" ? "монет" : "руды"}`;
+    const lockText = upg.id === "td" ? "Сначала открой Гильдию шахтеров" : "";
 
     const tile = document.createElement("div");
     tile.className = [
@@ -1584,7 +1625,7 @@ function startGame(diffKey) {
   state.depthLevel = depthLevel;
   runPickaxeEffects = getEquippedPickaxeEffects();
   runSecondWindUsed = false;
-  runShieldActive   = false;
+  runShieldActive = false;
   mobileFlagMode = false;
   applyRunPassives();
   state.playerPos = { r: 14, c: 7 };
@@ -1814,7 +1855,9 @@ function useInstantTool(toolId) {
     }
     if (!consumeRunTool(toolId)) return false;
     runShieldActive = true;
-    setRunToolHint("🛡 Щит активирован: следующий удар по нестабильной клетке не нанесёт урона.");
+    setRunToolHint(
+      "🛡 Щит активирован: следующий удар по нестабильной клетке не нанесёт урона.",
+    );
     trackDailyProgress("consumable", 1);
     return true;
   }
@@ -1908,7 +1951,9 @@ function useTargetedTool(toolId, r, c) {
     }
     if (!consumeRunTool(toolId)) return false;
     applyToolGridChanges(changed);
-    setRunToolHint(`📡 Сканер обнаружил и пометил ${flagged} нестабильных клеток.`);
+    setRunToolHint(
+      `📡 Сканер обнаружил и пометил ${flagged} нестабильных клеток.`,
+    );
     updateStats((s) => addXp(s, withRunXp(2)));
     return true;
   }
@@ -2017,16 +2062,16 @@ gridEl.addEventListener("click", (e) => {
   const prevStates = state.grid.map((row) => row.map((cell) => cell.state));
 
   const prevOre = state.ore;
-  const prevHp  = state.hp;
+  const prevHp = state.hp;
   const result = openCell(state, clickR, clickC);
   if (!result) return;
   setMinerPosition(clickR, clickC);
 
   // ─── ЩИТ: блокируем урон и обвал ──────────────────────────────────────────
   if (runShieldActive && result.hitCollapse && result.hitCollapse.length > 0) {
-    state.hp = prevHp;                              // восстанавливаем HP
+    state.hp = prevHp; // восстанавливаем HP
     updateCells(state.grid, gridEl, result.hitCollapse); // синхронизируем сетку
-    result.hitCollapse = null;                      // отменяем обвальный блок
+    result.hitCollapse = null; // отменяем обвальный блок
     runShieldActive = false;
     setRunToolHint("🛡 Щит поглотил удар! HP сохранён.");
   }
@@ -2313,7 +2358,7 @@ function showResult() {
     });
     state.statsRecorded = true;
     trackDailyProgress("run_any", 1);
-    if (reason === "clear")  trackDailyProgress("run_clear", 1);
+    if (reason === "clear") trackDailyProgress("run_clear", 1);
     if (reason === "escape") trackDailyProgress("run_escape", 1);
   }
 
@@ -2345,7 +2390,11 @@ function showResult() {
       cls: reason === "death" ? "red" : "green",
     },
     { label: "Прошло времени", val: formatTime(elapsed), cls: "blue" },
-    { label: "Глубина шахты", val: `Уровень ${state.depthLevel ?? 1}`, cls: "gold-dim" },
+    {
+      label: "Глубина шахты",
+      val: `Уровень ${state.depthLevel ?? 1}`,
+      cls: "gold-dim",
+    },
   ];
 
   resultRows.innerHTML = rows
@@ -3071,8 +3120,8 @@ function safeInit(label, fn) {
 safeInit("shop-ui", () => initShopScreen(showStartScreen));
 safeInit("prospectors-ui", () =>
   initProspectorsScreen({
-    onBack:    showStartScreen,
-    getGold:   getGold,
+    onBack: showStartScreen,
+    getGold: getGold,
     spendGold: spendGold,
     onStateChanged: () => {
       renderRunTools();
