@@ -3626,8 +3626,7 @@ body {
 #grid-wrapper {
   position: relative;
   max-width: 100%;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   border-radius: var(--radius-md, 12px);
 }
 
@@ -4115,14 +4114,14 @@ body {
       0 0 0 3px rgba(220, 38, 38, 0.7),
       0 0 48px rgba(220, 38, 38, 0.45),
       inset 0 0 36px rgba(220, 38, 38, 0.18);
-    transform: scale(0.991) rotate(0.25deg);
+    transform: scale(0.991);
   }
   42%  {
     box-shadow:
       0 0 0 2px rgba(220, 38, 38, 0.4),
       0 0 32px rgba(220, 38, 38, 0.22),
       inset 0 0 20px rgba(220, 38, 38, 0.09);
-    transform: scale(0.996) rotate(-0.15deg);
+    transform: scale(0.996);
   }
   72%  {
     box-shadow:
