@@ -1282,6 +1282,11 @@ html, body {
   flex: 1;
   overflow-y: auto;
   padding: 14px 12px 32px;
+  scrollbar-width: none;
+}
+
+.guild-content::-webkit-scrollbar {
+  display: none;
 }
 
 .guild-layout {

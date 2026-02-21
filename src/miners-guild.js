@@ -772,9 +772,9 @@ function renderGuildMiners(state) {
             <button class="guild-ctrl-btn" data-salary-miner="${m.id}" data-salary-delta="1" title="Повысить зарплату">+</button>
           </div>
           <div class="guild-actions">
-            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="speed" ${trainDisSpeed ? "disabled" : ""} title="Тренировка скорости">⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + "м"}</button>
-            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="safety" ${trainDisSafety ? "disabled" : ""} title="Тренировка безопасности">🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + "м"}</button>
-            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="yield" ${trainDisYield ? "disabled" : ""} title="Тренировка добычи">⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + "м"}</button>
+            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="speed" ${trainDisSpeed ? "disabled" : ""} title="Скорость ур.${m.stats.speed}→${m.stats.speed+1}: ${costSpeed} монет">⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + " мн"}</button>
+            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="safety" ${trainDisSafety ? "disabled" : ""} title="Безопасность ур.${m.stats.safety}→${m.stats.safety+1}: ${costSafety} монет">🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + " мн"}</button>
+            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="yield" ${trainDisYield ? "disabled" : ""} title="Добыча ур.${m.stats.yield}→${m.stats.yield+1}: ${costYield} монет">⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + " мн"}</button>
             <button class="guild-fire-btn" data-fire-miner="${m.id}" title="Уволить шахтёра">Уволить</button>
           </div>
         </div>
