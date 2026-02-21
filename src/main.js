@@ -1862,7 +1862,7 @@ function animateMiner(mode) {
   void minerSprite.offsetWidth;
   if (mode) {
     minerSprite.classList.add(mode);
-    setTimeout(() => minerSprite.classList.remove(mode), 340);
+    setTimeout(() => minerSprite.classList.remove(mode), 400);
   }
 }
 

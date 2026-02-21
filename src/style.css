@@ -3820,7 +3820,9 @@ body {
   height: calc(var(--cell-size) * 0.92);
   left: calc(var(--cell-size) / 2);
   top: calc(var(--cell-size) / 2);
+  /* resting state: centred on cell but invisible */
   transform: translate(-50%, -50%);
+  transform-origin: 60% 80%; /* pivot near handle bottom */
   z-index: 5;
   font-size: calc(var(--cell-size) * 0.76);
   display: flex;
@@ -3828,39 +3830,49 @@ body {
   justify-content: center;
   pointer-events: none;
   opacity: 0;
-  transition: left 0.2s linear, top 0.2s linear;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
+  transition: left 0.15s linear, top 0.15s linear;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.8));
 }
 
 #miner-sprite.instant {
   transition: none;
 }
 #miner-sprite.mining {
-  animation: miner-dig 0.32s ease forwards;
+  animation: miner-dig 0.38s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 #miner-sprite.pickup {
-  animation: miner-pickup 0.32s ease forwards;
+  animation: miner-pickup 0.38s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 #miner-sprite.dead {
   opacity: 1;
   animation: miner-dead 0.42s ease forwards;
 }
 
+/* Pickaxe raised above cell → swings down → recoils → fades */
 @keyframes miner-dig {
-  0%   { transform: translate(-50%, -65%) rotate(-35deg) scale(0.6); opacity: 0; }
-  18%  { transform: translate(-50%, -50%) rotate(-20deg) scale(1.1); opacity: 1; }
-  45%  { transform: translate(-50%, -46%) rotate(22deg)  scale(0.95); opacity: 1; }
-  70%  { transform: translate(-50%, -50%) rotate(5deg)   scale(1);    opacity: 1; }
+  /*  appear above cell, arm raised back  */
+  0%   { transform: translate(-50%, -130%) rotate(-55deg) scale(0.9);  opacity: 0; }
+  14%  { transform: translate(-50%, -125%) rotate(-50deg) scale(1.0);  opacity: 1; }
+  /*  tiny extra wind-up  */
+  26%  { transform: translate(-50%, -135%) rotate(-62deg) scale(1.05); opacity: 1; }
+  /*  STRIKE — fast swing down onto cell  */
+  50%  { transform: translate(-50%, -36%)  rotate(28deg)  scale(0.9);  opacity: 1; }
+  /*  recoil upward  */
+  70%  { transform: translate(-50%, -100%) rotate(10deg)  scale(1.0);  opacity: 1; }
   88%  { opacity: 1; }
-  100% { transform: translate(-50%, -50%) rotate(0deg)   scale(1);    opacity: 0; }
+  100% { transform: translate(-50%, -105%) rotate(0deg)   scale(1.0);  opacity: 0; }
 }
 
+/* Pickaxe scoops ore: raised → swings down → lifts back up gleefully */
 @keyframes miner-pickup {
-  0%   { transform: translate(-50%, -50%) scale(0.5) rotate(-10deg); opacity: 0; }
-  22%  { transform: translate(-50%, -54%) scale(1.2) rotate(5deg);   opacity: 1; }
-  55%  { transform: translate(-50%, -64%) scale(1.05) rotate(0deg);  opacity: 1; }
-  82%  { transform: translate(-50%, -52%) scale(1)   rotate(0deg);   opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1);                  opacity: 0; }
+  0%   { transform: translate(-50%, -120%) rotate(-45deg) scale(0.9);  opacity: 0; }
+  15%  { transform: translate(-50%, -115%) rotate(-40deg) scale(1.0);  opacity: 1; }
+  26%  { transform: translate(-50%, -125%) rotate(-52deg) scale(1.05); opacity: 1; }
+  48%  { transform: translate(-50%, -32%)  rotate(22deg)  scale(0.88); opacity: 1; }
+  /*  lift up with ore  */
+  68%  { transform: translate(-50%, -115%) rotate(-12deg) scale(1.1);  opacity: 1; }
+  86%  { opacity: 1; }
+  100% { transform: translate(-50%, -120%) rotate(-5deg)  scale(1.0);  opacity: 0; }
 }
 
 @keyframes miner-dead {
