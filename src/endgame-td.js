@@ -738,16 +738,13 @@ function drawTowers() {
     const stats = getTowerLevelStats(type, tower.level);
     ctx.save();
 
-    // Range circle (translucent fill, not dashed)
+    // Range circle (translucent fill)
     if (selectedType && tower.typeId === state.selectedTowerId) {
-      const grad = ctx.createRadialGradient(tower.x, tower.y, stats.range * 0.7, tower.x, tower.y, stats.range);
-      grad.addColorStop(0, "rgba(255,255,255,0)");
-      grad.addColorStop(1, type.color.replace(")", ",0.08)").replace("rgb(", "rgba(").replace("#", ""));
       ctx.beginPath();
       ctx.arc(tower.x, tower.y, stats.range, 0, Math.PI * 2);
-      ctx.fillStyle = `${type.color}11`;
+      ctx.fillStyle = `${type.color}18`;
       ctx.fill();
-      ctx.strokeStyle = `${type.color}33`;
+      ctx.strokeStyle = `${type.color}55`;
       ctx.lineWidth = 1;
       ctx.stroke();
     }
