@@ -916,7 +916,7 @@ document.getElementById("hud-ore-icon").src = oreImg;
 if (tickerMount) tickerMount.appendChild(createTicker(getNewsContext));
 
 // Создаём сердца один раз (с учетом апгрейдов клуба)
-const MAX_HEARTS = 6;
+const MAX_HEARTS = 10;
 const heartImgs = [];
 for (let i = 0; i < MAX_HEARTS; i++) {
   const img = document.createElement("img");
@@ -1127,7 +1127,7 @@ function applyRunPassives() {
   const pickaxeFx = runPickaxeEffects ?? {};
   state.diff = { ...state.diff };
   state.diff.startHp = Math.min(
-    6,
+    MAX_HEARTS,
     state.diff.startHp +
       (passives.extraStartHp ?? 0) +
       (pickaxeFx.extraStartHp ?? 0),
