@@ -771,11 +771,25 @@ function renderGuildMiners(state) {
             <span class="guild-salary-label" title="Зарплата списывается за рейс">${m.salaryPerMin} м/мин</span>
             <button class="guild-ctrl-btn" data-salary-miner="${m.id}" data-salary-delta="1" title="Повысить зарплату">+</button>
           </div>
-          <div class="guild-actions">
-            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="speed" ${trainDisSpeed ? "disabled" : ""} title="Скорость ур.${m.stats.speed}→${m.stats.speed+1}: ${costSpeed} монет">⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + " мн"}</button>
-            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="safety" ${trainDisSafety ? "disabled" : ""} title="Безопасность ур.${m.stats.safety}→${m.stats.safety+1}: ${costSafety} монет">🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + " мн"}</button>
-            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="yield" ${trainDisYield ? "disabled" : ""} title="Добыча ур.${m.stats.yield}→${m.stats.yield+1}: ${costYield} монет">⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + " мн"}</button>
-            <button class="guild-fire-btn" data-fire-miner="${m.id}" title="Уволить шахтёра">Уволить</button>
+          <div class="guild-train-section">
+            <div class="guild-train-header">
+              <span class="guild-train-label">Тренировка</span>
+              <button class="guild-fire-btn" data-fire-miner="${m.id}" title="Уволить шахтёра">Уволить</button>
+            </div>
+            <div class="guild-train-btns">
+              <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="speed" ${trainDisSpeed ? "disabled" : ""}>
+                <span class="guild-train-stat">⚡ Скорость</span>
+                <span class="guild-train-sub">${m.stats.speed >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.speed}→${m.stats.speed + 1} · ${costSpeed} мн`}</span>
+              </button>
+              <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="safety" ${trainDisSafety ? "disabled" : ""}>
+                <span class="guild-train-stat">🛡 Безопасность</span>
+                <span class="guild-train-sub">${m.stats.safety >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.safety}→${m.stats.safety + 1} · ${costSafety} мн`}</span>
+              </button>
+              <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="yield" ${trainDisYield ? "disabled" : ""}>
+                <span class="guild-train-stat">⛏ Добыча</span>
+                <span class="guild-train-sub">${m.stats.yield >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.yield}→${m.stats.yield + 1} · ${costYield} мн`}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>`;

@@ -1515,26 +1515,52 @@ html, body {
   text-align: center;
 }
 
-.guild-actions {
+.guild-train-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guild-train-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guild-train-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim, #9ca3af);
+}
+
+.guild-train-btns {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 
 .guild-train-btn {
-  font-size: 11px;
-  padding: 5px 9px;
-  background: rgba(96,165,250,0.09);
-  border: 1px solid rgba(96,165,250,0.20);
-  border-radius: 6px;
-  color: #93c5fd;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 7px 11px;
+  flex: 1;
+  min-width: 86px;
+  background: rgba(96,165,250,0.08);
+  border: 1px solid rgba(96,165,250,0.22);
+  border-radius: 7px;
   cursor: pointer;
   font-family: var(--font-body, 'Inter', sans-serif);
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
 }
 
 .guild-train-btn:hover:not(:disabled) {
   background: rgba(96,165,250,0.17);
+  border-color: rgba(96,165,250,0.40);
 }
 
 .guild-train-btn:disabled {
@@ -1542,16 +1568,28 @@ html, body {
   cursor: not-allowed;
 }
 
+.guild-train-stat {
+  font-size: 12px;
+  font-weight: 700;
+  color: #93c5fd;
+  line-height: 1.1;
+}
+
+.guild-train-sub {
+  font-size: 10px;
+  color: var(--text-dim, #9ca3af);
+  line-height: 1.2;
+}
+
 .guild-fire-btn {
   font-size: 11px;
-  padding: 5px 9px;
+  padding: 5px 10px;
   background: rgba(239,68,68,0.09);
   border: 1px solid rgba(239,68,68,0.20);
   border-radius: 6px;
   color: #fca5a5;
   cursor: pointer;
   font-family: var(--font-body, 'Inter', sans-serif);
-  margin-left: auto;
   transition: background 0.15s;
 }
 
