@@ -304,13 +304,15 @@ function renderGachaCollection() {
 
   mount.innerHTML = inv
     .map((p) => {
-      const ownedLabel = p.owned > 0 ? `x${p.owned}` : "Не получена";
+      const ownedLabel = p.owned > 0 ? `×${p.owned}` : "—";
+      const dimClass = p.owned === 0 ? "gacha-pickaxe-locked" : "";
       return `
-      <div class="gacha-pickaxe-card ${RARITY_CLASS[p.rarity]} ${equipped?.id === p.id ? "active" : ""}">
+      <div class="gacha-pickaxe-card ${RARITY_CLASS[p.rarity]} ${equipped?.id === p.id ? "active" : ""} ${dimClass}">
         <div class="gacha-pickaxe-head">
           <div class="gacha-pickaxe-name">${p.name}</div>
-          <div class="gacha-pickaxe-rarity">${RARITY_LABEL[p.rarity]}</div>
+          <div class="gacha-pickaxe-rarity ${RARITY_CLASS[p.rarity]}">${RARITY_LABEL[p.rarity]}</div>
         </div>
+        <div class="gacha-pickaxe-desc">${p.desc}</div>
         <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
         <div class="gacha-pickaxe-foot"><span>${ownedLabel}</span></div>
       </div>`;
@@ -332,33 +334,32 @@ function renderInventoryCollection() {
   equippedLabel.textContent = equipped
     ? `${equipped.name} — ${formatEffects(equipped.effects)}`
     : "Нет экипированной кирки";
-  stats.textContent = `Уникальных: ${uniqueOwned}/${PICKAXES.length} • Всего кирок: ${ownedTotal}`;
+  stats.textContent = `${uniqueOwned} / ${PICKAXES.length} уник.`;
 
   const owned = inv.filter((p) => p.owned > 0);
   if (!owned.length) {
     mount.innerHTML = `
-      <div class="gacha-pickaxe-card rarity-common">
-        <div class="gacha-pickaxe-name">Инвентарь пуст</div>
-        <div class="gacha-pickaxe-desc">Сделай крутки в разделе «Гача», чтобы получить первые кирки.</div>
+      <div class="gacha-pickaxe-empty">
+        Инвентарь пуст. Сделай крутки в разделе «Гача».
       </div>`;
     return;
   }
 
   mount.innerHTML = owned
     .map((p) => {
-      const canEquip = p.owned > 0;
       const active = equipped?.id === p.id;
-      const btnLabel = active ? "Экипировано" : "Экипировать";
+      const btnLabel = active ? "✓ Экипировано" : "Экипировать";
       return `
       <div class="gacha-pickaxe-card ${RARITY_CLASS[p.rarity]} ${active ? "active" : ""}">
         <div class="gacha-pickaxe-head">
           <div class="gacha-pickaxe-name">${p.name}</div>
-          <div class="gacha-pickaxe-rarity">${RARITY_LABEL[p.rarity]}</div>
+          <div class="gacha-pickaxe-rarity ${RARITY_CLASS[p.rarity]}">${RARITY_LABEL[p.rarity]}</div>
         </div>
+        <div class="gacha-pickaxe-desc">${p.desc}</div>
         <div class="gacha-pickaxe-effects">${formatEffects(p.effects)}</div>
         <div class="gacha-pickaxe-foot">
-          <span>В инвентаре: x${p.owned}</span>
-          <button class="btn-primary gacha-equip-btn" data-inventory-pickaxe-id="${p.id}" ${canEquip ? "" : "disabled"}>${btnLabel}</button>
+          <span>×${p.owned}</span>
+          <button class="btn-primary gacha-equip-btn ${active ? "gacha-equip-active" : ""}" data-inventory-pickaxe-id="${p.id}">${btnLabel}</button>
         </div>
       </div>`;
     })
@@ -414,38 +415,71 @@ function rollOneInternal() {
 export function buildGachaScreen() {
   return `
   <div id="screen-gacha" class="screen">
-    <div class="panel gacha-panel">
-      <div class="panel-header"><span class="icon">🎰</span> БЮРО КРУТОК КИРОК</div>
-      <div class="panel-body gacha-layout">
-        <div class="gacha-main-card">
-          <div class="gacha-row">
-            <div class="gacha-ticket-line">🎟 Билеты: <strong id="gacha-tickets">0</strong></div>
-            <div class="gacha-actions">
-              <button class="btn-primary" id="gacha-roll-1">Крутка x1</button>
-              <button class="btn-primary" id="gacha-roll-5">Крутка x5</button>
+
+    <nav class="gacha-topbar">
+      <div class="gacha-topbar-brand">
+        <span class="gacha-topbar-emoji">🎰</span>
+        <span class="gacha-topbar-title">Бюро круток</span>
+      </div>
+      <div class="gacha-topbar-stats">
+        <div class="resource-chip">
+          <span class="resource-dot" style="background:#a78bfa;box-shadow:0 0 6px rgba(167,139,250,0.5)"></span>
+          <span class="resource-val" id="gacha-tickets">0</span>
+          <span class="resource-label">билетов</span>
+        </div>
+      </div>
+      <button class="topbar-btn" id="gacha-back">← Меню</button>
+    </nav>
+
+    <div class="gacha-content">
+      <div class="gacha-layout">
+
+        <div class="card gacha-machine-card">
+          <div class="card-header">
+            <span class="card-header-icon">⛏</span>
+            <span class="card-header-text">Барабаны</span>
+          </div>
+          <div class="card-body">
+            <div class="gacha-machine" id="gacha-machine">
+              <div class="gacha-machine-head">MINE JACKPOT</div>
+              <div class="gacha-reels">
+                <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-a">⛏</div></div>
+                <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-b">⛏</div></div>
+                <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-c">⛏</div></div>
+              </div>
+              <div class="gacha-reel-status" id="gacha-reel-status">ГОТОВ К КРУТКЕ</div>
+            </div>
+            <div class="gacha-roll-actions">
+              <button class="btn-primary" id="gacha-roll-1">Крутка ×1</button>
+              <button class="btn-primary" id="gacha-roll-5">Крутка ×5</button>
+            </div>
+            <div class="gacha-last-roll">
+              <div class="gacha-last-title" id="gacha-last-title">Последняя крутка</div>
+              <div class="gacha-last-body" id="gacha-last-body">Сделай крутку за билет, чтобы получить кирку.</div>
             </div>
           </div>
-          <div class="gacha-last-roll">
-            <div class="gacha-last-title" id="gacha-last-title">Последняя крутка</div>
-            <div class="gacha-last-body" id="gacha-last-body">Сделай крутку за билет, чтобы получить кирку.</div>
-          </div>
-          <div class="gacha-machine" id="gacha-machine">
-            <div class="gacha-machine-head">CASINO MINE JACKPOT</div>
-            <div class="gacha-reels">
-              <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-a">⛏</div></div>
-              <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-b">⛏</div></div>
-              <div class="gacha-reel-window"><div class="gacha-reel" id="gacha-reel-c">⛏</div></div>
-            </div>
-            <div class="gacha-reel-status" id="gacha-reel-status">ГОТОВ К КРУТКЕ</div>
-          </div>
-          <div class="gacha-equipped-line">Экипировано: <span id="gacha-equipped">Нет экипированной кирки</span></div>
         </div>
 
-        <div class="gacha-pickaxe-list" id="gacha-pickaxe-list"></div>
-
-        <div class="gacha-footer-actions">
-          <button class="btn-primary" id="gacha-back">← Назад</button>
+        <div class="card gacha-equipped-card">
+          <div class="card-header">
+            <span class="card-header-icon">🎒</span>
+            <span class="card-header-text">Экипировано</span>
+          </div>
+          <div class="card-body">
+            <div class="gacha-equipped-info" id="gacha-equipped">Нет экипированной кирки</div>
+          </div>
         </div>
+
+        <div class="card gacha-collection-card">
+          <div class="card-header">
+            <span class="card-header-icon">📋</span>
+            <span class="card-header-text">Коллекция кирок</span>
+          </div>
+          <div class="card-body">
+            <div class="gacha-pickaxe-list" id="gacha-pickaxe-list"></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>`;
@@ -454,19 +488,43 @@ export function buildGachaScreen() {
 export function buildInventoryScreen() {
   return `
   <div id="screen-inventory" class="screen">
-    <div class="panel inventory-panel">
-      <div class="panel-header"><span class="icon">🎒</span> ИНВЕНТАРЬ КИРОК</div>
-      <div class="panel-body inventory-layout">
-        <div class="gacha-main-card">
-          <div class="gacha-equipped-line">Экипировано: <span id="inventory-equipped">Нет экипированной кирки</span></div>
-          <div class="gacha-ticket-line" id="inventory-stats">Уникальных: 0/15 • Всего кирок: 0</div>
+
+    <nav class="gacha-topbar">
+      <div class="gacha-topbar-brand">
+        <span class="gacha-topbar-emoji">🎒</span>
+        <span class="gacha-topbar-title">Инвентарь кирок</span>
+      </div>
+      <div class="gacha-topbar-stats">
+        <div class="resource-chip">
+          <span class="resource-val" id="inventory-stats" style="font-size:11px">0 / ${PICKAXES.length}</span>
+        </div>
+      </div>
+      <button class="topbar-btn" id="inventory-back">← Меню</button>
+    </nav>
+
+    <div class="gacha-content">
+      <div class="gacha-layout">
+
+        <div class="card gacha-equipped-card">
+          <div class="card-header">
+            <span class="card-header-icon">⚒️</span>
+            <span class="card-header-text">Экипировано</span>
+          </div>
+          <div class="card-body">
+            <div class="gacha-equipped-info" id="inventory-equipped">Нет экипированной кирки</div>
+          </div>
         </div>
 
-        <div class="gacha-pickaxe-list" id="inventory-pickaxe-list"></div>
-
-        <div class="gacha-footer-actions">
-          <button class="btn-primary" id="inventory-back">← Назад</button>
+        <div class="card gacha-collection-card">
+          <div class="card-header">
+            <span class="card-header-icon">📋</span>
+            <span class="card-header-text">Коллекция</span>
+          </div>
+          <div class="card-body">
+            <div class="gacha-pickaxe-list" id="inventory-pickaxe-list"></div>
+          </div>
         </div>
+
       </div>
     </div>
   </div>`;
