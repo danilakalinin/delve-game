@@ -602,98 +602,80 @@ document.getElementById("app").innerHTML = `
   <!-- ══ ИГРА ══ -->
   <div id="screen-game" class="screen">
 
+    <!-- Modern glassmorphism HUD -->
     <div id="hud">
-      <!-- HP -->
       <div class="hud-section hud-hp">
-        <div class="hud-section-label">ЗДОРОВЬЕ</div>
+        <div class="hud-section-label">HP</div>
         <div id="hud-hearts" class="hud-hearts-row"></div>
       </div>
-
-      <!-- Руда вылазки -->
       <div class="hud-section hud-ore-sec">
-        <div class="hud-section-label">РУДА</div>
         <div class="hud-ore-row">
           <img class="hud-ore-icon" id="hud-ore-icon" src="" draggable="false" alt="">
           <span class="hud-big-val ore-color" id="hud-ore-val">0</span>
         </div>
       </div>
-
-      <!-- Банк -->
       <div class="hud-section hud-bank-sec">
-        <div class="hud-section-label">БАНК</div>
+        <div class="hud-section-label">🏦</div>
         <span class="hud-big-val gold-color" id="hud-bank-val">0</span>
       </div>
-
-      <!-- Таймер -->
       <div class="hud-section hud-timer-sec">
-        <div class="hud-section-label">ВРЕМЯ</div>
         <span class="hud-timer" id="hud-timer-val">00:00</span>
       </div>
-
-      <!-- Сложность -->
       <div class="hud-section hud-diff-sec">
-        <div class="hud-section-label">РЕЖИМ</div>
         <span class="hud-diff-val" id="hud-diff-val">—</span>
       </div>
-
-      <!-- Массовый сбор руды -->
-      <div class="hud-section hud-collect-sec">
-        <button class="collect-ore-btn btn-primary" id="collect-ore-btn">📥 СБОР РУДЫ</button>
-      </div>
-
-      <!-- Предупреждения (idle countdown) -->
       <div class="hud-section hud-events-sec">
         <span id="event-warning" class="event-warning-hud"></span>
       </div>
-
-      <!-- Кнопка выхода -->
+      <div class="hud-section hud-collect-sec">
+        <button class="collect-ore-btn btn-primary" id="collect-ore-btn">📥 СБОР</button>
+      </div>
       <div class="hud-section hud-escape-sec">
         <button class="escape-btn btn-danger" id="escape-btn">🚪 УЙТИ</button>
       </div>
-
       <div class="hud-section hud-mobile-flag-sec" id="hud-mobile-flag-sec">
         <button class="collect-ore-btn" id="mobile-flag-toggle-btn">🚩 ФЛАГ: OFF</button>
       </div>
     </div>
 
+    <!-- Game area: grid + sidebar -->
     <div class="game-main-layout">
       <div id="grid-wrapper">
         <div id="grid"></div>
         <div id="miner-sprite" aria-hidden="true">⛏️</div>
       </div>
 
-      <aside class="panel game-guide-panel" id="game-guide-panel">
-        <div class="panel-header"><span class="icon">🧭</span> ГАЙД ПО САПЕРУ DELVE</div>
-        <div class="panel-body game-guide-body">
-          <div class="game-music-inline">
-            <div class="game-guide-subtitle">Музыка</div>
-            <div class="game-music-controls">
-              <button class="music-mute-btn btn-primary" id="game-music-mute-btn" type="button">🔊 ВКЛ</button>
-              <input id="game-music-volume" class="music-slider game-music-slider" type="range" min="0" max="100" step="1" value="55">
-              <span class="music-value" id="game-music-volume-value">55%</span>
-            </div>
-          </div>
+      <aside class="card game-sidebar" id="game-guide-panel">
+        <div class="card-header">
+          <span class="card-header-icon">🧰</span>
+          <span class="card-header-text">Инструменты</span>
+        </div>
+        <div class="card-body card-body-flush">
+          <div class="run-tools" id="run-tools"></div>
+          <div class="run-tools-hint" id="run-tools-hint">Открой «Клуб старателей» и закупи расходники перед вылазкой.</div>
+        </div>
 
-          <div class="game-tools-inline">
-            <div class="game-guide-subtitle">Инструменты клуба</div>
-            <div class="run-tools" id="run-tools"></div>
-            <div class="run-tools-hint" id="run-tools-hint">Открой «Клуб старателей» и закупи расходники перед вылазкой.</div>
+        <div class="game-sidebar-section">
+          <div class="game-sidebar-label">🎵 Музыка</div>
+          <div class="game-music-controls">
+            <button class="topbar-btn topbar-btn-icon music-mute-btn" id="game-music-mute-btn" type="button">🔊</button>
+            <input id="game-music-volume" class="music-slider game-music-slider" type="range" min="0" max="100" step="1" value="55">
+            <span class="music-value" id="game-music-volume-value">55%</span>
           </div>
+        </div>
 
-          <div class="game-guide-subtitle">Как играть</div>
+        <div class="game-sidebar-section game-guide-section">
+          <div class="game-sidebar-label">📖 Как играть</div>
           <ul class="game-guide-list">
-            <li>🖱 ЛКМ по 🪨: открываешь клетки.</li>
-            <li>⛏ Нашел подсвеченную руду: кликни и забери в банк.</li>
-            <li>🧰 Инструменты справа: выбери предмет и применяй его в вылазке.</li>
-            <li>🚩 ПКМ: поставить/снять флаг на опасной клетке.</li>
-            <li>💥 Красная нестабильная клетка: урон по HP + обвал.</li>
-            <li>😴 Долго AFK: будет бвал (смотри предупреждение).</li>
-            <li>🚪 «УЙТИ»: безопаснее для жизни, но часть руды потеряешь.</li>
-            <li>✅ Победа: открыты все безопасные клетки. ☠ Поражение: HP = 0.</li>
+            <li>🖱 <strong>ЛКМ</strong> по клетке — раскопать.</li>
+            <li>⛏ Руда светится — кликни, заберёшь в банк.</li>
+            <li>🧰 Выбери инструмент — применяй по клетке.</li>
+            <li>🚩 <strong>ПКМ</strong> — поставить / снять флаг опасности.</li>
+            <li>💥 Нестабильная — удар по HP + обвал!</li>
+            <li>😴 Долго AFK — будет обвал (смотри предупреждение).</li>
+            <li>🚪 «Уйти» — безопаснее, но часть руды потеряешь.</li>
           </ul>
-
-          <div class="game-guide-subtitle">Полезно</div>
-          <p class="game-guide-note">🟢 Easy: меньше руды и риска. 🔴 Hard: больше руды, но ошибки наказываются жёстче.</p>
+          <p class="game-guide-note">🟢 Easy: меньше риска. 🔴 Hard: больше руды, жёстче.</p>
         </div>
       </aside>
     </div>
@@ -701,12 +683,12 @@ document.getElementById("app").innerHTML = `
 
   <!-- ══ РЕЗУЛЬТАТЫ ══ -->
   <div id="screen-result" class="screen">
-    <div class="panel result-panel">
-      <div class="panel-header" id="result-header"></div>
+    <div class="card result-panel">
+      <div class="card-header result-header" id="result-header"></div>
       <div class="result-rows" id="result-rows"></div>
       <div class="result-reason" id="result-reason"></div>
     </div>
-    <button class="new-run-btn btn-primary" id="new-run-btn">⛏ НОВАЯ ВЫЛАЗКА</button>
+    <button class="btn-modern btn-accent new-run-btn" id="new-run-btn">⛏ НОВАЯ ВЫЛАЗКА</button>
   </div>
 
   <!-- ══ ДИАЛОГ ВЫХОДА ══ -->
