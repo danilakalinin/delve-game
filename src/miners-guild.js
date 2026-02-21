@@ -643,62 +643,81 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function moodClass(mood) {
+  if (mood >= 65) return "good";
+  if (mood >= 40) return "ok";
+  return "bad";
+}
+
+function moodEmoji(mood) {
+  if (mood >= 65) return "😊";
+  if (mood >= 40) return "😐";
+  return "😟";
+}
+
 function renderGuildStats(state) {
-  const nameEl = document.getElementById("guild-name");
-  const silverEl = document.getElementById("guild-silver");
-  const modeEl = document.getElementById("guild-mode");
-  const minersEl = document.getElementById("guild-miners");
-  const hiredEl = document.getElementById("guild-hired");
-  const deathsEl = document.getElementById("guild-deaths");
-  const oreEl = document.getElementById("guild-ore-mined");
-  const runSecEl = document.getElementById("guild-run-time");
-  const deathEl = document.getElementById("guild-death-risk");
-  const moodEl = document.getElementById("guild-mood");
-  const salaryEl = document.getElementById("guild-salary-paid");
+  const nameEl    = document.getElementById("guild-name");
+  const silverEl  = document.getElementById("guild-silver");
+  const minersEl  = document.getElementById("guild-miners");
+  const deathsEl  = document.getElementById("guild-deaths");
+  const oreEl     = document.getElementById("guild-ore-mined");
+  const runSecEl  = document.getElementById("guild-run-time");
+  const deathEl   = document.getElementById("guild-death-risk");
+  const moodEl    = document.getElementById("guild-mood");
+  const salaryEl  = document.getElementById("guild-salary-paid");
 
   const avgMood = state.miners.length
     ? Math.round(state.miners.reduce((s, m) => s + (m.mood ?? 0), 0) / state.miners.length)
     : 0;
 
-  if (nameEl) nameEl.textContent = state.name || "Безымянная гильдия";
-  if (silverEl) silverEl.textContent = `${_getSilver ? _getSilver() : 0} монет`;
-  if (modeEl) modeEl.textContent = getDifficultyConfig(state).label;
+  if (nameEl)   nameEl.textContent   = state.name || "Безымянная гильдия";
+  if (silverEl) silverEl.textContent = String(_getSilver ? _getSilver() : 0);
   if (minersEl) minersEl.textContent = `${state.miners.length}/${getGuildCapacity(state)}`;
-  if (hiredEl) hiredEl.textContent = `${state.stats.hiredTotal}`;
-  if (deathsEl) deathsEl.textContent = `${state.stats.deathsTotal}`;
-  if (oreEl) oreEl.textContent = `${state.stats.oreMinedTotal}`;
+  if (deathsEl) deathsEl.textContent = String(state.stats.deathsTotal);
+  if (oreEl)    oreEl.textContent    = String(state.stats.oreMinedTotal);
   if (runSecEl) runSecEl.textContent = `${getEffectiveRunSecBase(state)}с`;
-  if (deathEl) deathEl.textContent = `${(getEffectiveDeathChanceBase(state) * 100).toFixed(1)}%`;
-  if (moodEl) moodEl.textContent = `${avgMood}%`;
-  if (salaryEl) salaryEl.textContent = `${state.stats.salaryPaidTotal} монет`;
+  if (deathEl)  deathEl.textContent  = `${(getEffectiveDeathChanceBase(state) * 100).toFixed(1)}%`;
+  if (moodEl) {
+    moodEl.textContent = state.miners.length ? `${moodEmoji(avgMood)} ${avgMood}%` : "—";
+  }
+  if (salaryEl) salaryEl.textContent = `${state.stats.salaryPaidTotal}`;
 }
 
 function renderGuildCandidates(state) {
-  const wrap = document.getElementById("guild-candidate-list");
+  const collapseWrap = document.getElementById("guild-candidate-wrap");
+  const list = document.getElementById("guild-candidate-list");
   const toggleBtn = document.getElementById("guild-candidate-toggle");
-  if (!wrap) return;
+  if (!list) return;
   const collapsed = isCandidatesCollapsed();
-  wrap.style.display = collapsed ? "none" : "";
+  if (collapseWrap) collapseWrap.style.display = collapsed ? "none" : "";
   if (toggleBtn) toggleBtn.textContent = collapsed ? "Развернуть" : "Свернуть";
   if (collapsed) return;
+
   const cap = getGuildCapacity(state);
   const hireCost = getHireCost(state);
   const canHireAny = state.miners.length < cap;
 
-  wrap.innerHTML = state.candidates
+  list.innerHTML = state.candidates
     .slice(0, CANDIDATE_POOL_SIZE)
     .map((c) => {
       const canAfford = _getSilver ? _getSilver() >= hireCost : false;
       const canHire = canHireAny && canAfford;
       const preview = getCandidatePreview(c, state);
+      const disabledReason = !canHireAny ? "Бригада полна" : !canAfford ? `Нужно ${hireCost} монет` : "";
       return `
-      <div class="guild-candidate-item">
-        <div class="guild-candidate-name">🧑‍🔧 ${c.name}</div>
-        <div class="guild-candidate-stats" title="⚡ Скорость: влияет на время рейса. 🛡 Безопасность: снижает риск гибели. ⛏ Добыча: увеличивает объем и шанс редкой руды.">⚡${c.stats.speed} · 🛡${c.stats.safety} · ⛏${c.stats.yield}</div>
-        <div class="guild-candidate-meta" title="Желаемая зарплата кандидата за минуту">Ожидания: ${c.expectedSalary} монет/мин</div>
-        <div class="guild-candidate-meta" title="Оценка результата на текущей сложности: добыча, время, риск гибели">Прогноз: ${preview.yieldRange.min}-${preview.yieldRange.max} руды · ${preview.runSec}с · ${(preview.deathChance * 100).toFixed(1)}% риска</div>
-        <button class="guild-mini-btn btn-primary" title="Нанять кандидата в бригаду за фиксированную сумму" data-hire-candidate="${c.id}" ${canHire ? "" : "disabled"}>
-          Нанять (${hireCost} монет)
+      <div class="guild-candidate-card">
+        <div class="guild-candidate-header">
+          <span class="guild-candidate-name">🧑‍🔧 ${c.name}</span>
+          <span class="guild-candidate-salary">${c.expectedSalary} м/мин</span>
+        </div>
+        <div class="guild-stat-pills">
+          <span class="guild-stat-pill" title="Скорость: влияет на время рейса">⚡ <strong>${c.stats.speed}</strong></span>
+          <span class="guild-stat-pill" title="Безопасность: снижает риск гибели">🛡 <strong>${c.stats.safety}</strong></span>
+          <span class="guild-stat-pill" title="Добыча: объём и шанс редкой руды">⛏ <strong>${c.stats.yield}</strong></span>
+          <span class="guild-forecast">${preview.yieldRange.min}–${preview.yieldRange.max} руды · ${preview.runSec}с · ${(preview.deathChance * 100).toFixed(1)}%</span>
+        </div>
+        <button class="guild-hire-btn" data-hire-candidate="${c.id}" ${canHire ? "" : "disabled"} title="${disabledReason || "Нанять в бригаду"}">
+          Нанять · ${hireCost} монет
         </button>
       </div>`;
     })
@@ -710,41 +729,54 @@ function renderGuildMiners(state) {
   if (!listEl) return;
 
   if (!state.miners.length) {
-    listEl.innerHTML = '<div class="guild-empty">Пока никого. Наними шахтёра из списка кандидатов.</div>';
+    listEl.innerHTML = '<div class="guild-empty-state">Бригада пуста — наними шахтёра из кандидатов ниже.</div>';
     return;
   }
 
+  const silver = _getSilver ? _getSilver() : 0;
+
   listEl.innerHTML = state.miners
     .map((m) => {
-      const costSpeed = m.stats.speed < 8 ? getTrainingCost(m, "speed") : 0;
+      const costSpeed  = m.stats.speed  < 8 ? getTrainingCost(m, "speed")  : 0;
       const costSafety = m.stats.safety < 8 ? getTrainingCost(m, "safety") : 0;
-      const costYield = m.stats.yield < 8 ? getTrainingCost(m, "yield") : 0;
-      const runSec = getMinerRunSec(m, state);
+      const costYield  = m.stats.yield  < 8 ? getTrainingCost(m, "yield")  : 0;
+      const runSec     = getMinerRunSec(m, state);
       const deathChance = getMinerDeathChance(m, state);
-      const yieldRange = getMinerYieldRange(m, state);
+      const yieldRange  = getMinerYieldRange(m, state);
+      const mood = Math.round(m.mood);
+      const mc = moodClass(mood);
+
+      const trainDisSpeed  = m.stats.speed  >= 8 || silver < costSpeed;
+      const trainDisSafety = m.stats.safety >= 8 || silver < costSafety;
+      const trainDisYield  = m.stats.yield  >= 8 || silver < costYield;
+
       return `
-      <div class="guild-miner-row">
-        <div class="guild-miner-main">
+      <div class="guild-miner-card">
+        <div class="guild-miner-header">
           <span class="guild-miner-name">👷 ${m.name}</span>
-          <span class="guild-miner-eta" title="Оставшееся время до завершения текущего рейса">ETA: ${fmtTime(m.cooldown)}</span>
-          <span class="guild-miner-mood" title="Настроение влияет на скорость, риск и объем добычи">🙂 ${Math.round(m.mood)}%</span>
+          <div class="guild-miner-chips">
+            <span class="guild-eta-chip" title="До конца рейса">⏱ ${fmtTime(m.cooldown)}</span>
+            <span class="guild-mood-chip ${mc}" title="Настроение влияет на скорость, риск и добычу">${moodEmoji(mood)} ${mood}%</span>
+          </div>
         </div>
-        <div class="guild-miner-stats" title="⚡ Скорость: быстрее рейс. 🛡 Безопасность: меньше риск гибели. ⛏ Добыча: больше руды и шанс редких типов.">⚡${m.stats.speed} · 🛡${m.stats.safety} · ⛏${m.stats.yield}</div>
-        <div class="guild-miner-impact">
-          <span title="Среднее время одного рейса с учетом статов">⏱ Рейс: ${runSec}с</span>
-          <span title="Вероятность гибели в одном рейсе">☠ Риск: ${(deathChance * 100).toFixed(1)}%</span>
-          <span title="Прогноз добычи за рейс на текущей сложности">📦 Добыча: ${yieldRange.min}-${yieldRange.max}</span>
+        <div class="guild-stat-pills">
+          <span class="guild-stat-pill" title="Скорость: быстрее рейс">⚡ <strong>${m.stats.speed}</strong></span>
+          <span class="guild-stat-pill" title="Безопасность: меньше риск гибели">🛡 <strong>${m.stats.safety}</strong></span>
+          <span class="guild-stat-pill" title="Добыча: больше руды и редких типов">⛏ <strong>${m.stats.yield}</strong></span>
+          <span class="guild-forecast" title="Прогноз за рейс">${yieldRange.min}–${yieldRange.max} руды · ${runSec}с · ${(deathChance * 100).toFixed(1)}%</span>
         </div>
-        <div class="guild-miner-pay">
-          <button class="guild-mini-btn btn-primary" title="Понизить зарплату (влияет на настроение и эффективность)" data-salary-miner="${m.id}" data-salary-delta="-1">−</button>
-          <span title="Текущая зарплата списывается по завершению рейса">${m.salaryPerMin} монет/мин</span>
-          <button class="guild-mini-btn btn-primary" title="Повысить зарплату (повышает настроение и стабильность)" data-salary-miner="${m.id}" data-salary-delta="1">+</button>
-        </div>
-        <div class="guild-miner-train">
-          <button class="guild-mini-btn btn-primary" title="Тренировка скорости: рейсы завершаются быстрее" data-train-miner="${m.id}" data-train-stat="speed" ${m.stats.speed >= 8 || (_getSilver && _getSilver() < costSpeed) ? "disabled" : ""}>⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + " монет"}</button>
-          <button class="guild-mini-btn btn-primary" title="Тренировка безопасности: снижает шанс гибели" data-train-miner="${m.id}" data-train-stat="safety" ${m.stats.safety >= 8 || (_getSilver && _getSilver() < costSafety) ? "disabled" : ""}>🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + " монет"}</button>
-          <button class="guild-mini-btn btn-primary" title="Тренировка добычи: повышает объем и качество руды" data-train-miner="${m.id}" data-train-stat="yield" ${m.stats.yield >= 8 || (_getSilver && _getSilver() < costYield) ? "disabled" : ""}>⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + " монет"}</button>
-          <button class="guild-mini-btn btn-danger" title="Уволить шахтера из бригады" data-fire-miner="${m.id}">Уволить</button>
+        <div class="guild-miner-controls">
+          <div class="guild-salary-ctrl">
+            <button class="guild-ctrl-btn" data-salary-miner="${m.id}" data-salary-delta="-1" title="Снизить зарплату">−</button>
+            <span class="guild-salary-label" title="Зарплата списывается за рейс">${m.salaryPerMin} м/мин</span>
+            <button class="guild-ctrl-btn" data-salary-miner="${m.id}" data-salary-delta="1" title="Повысить зарплату">+</button>
+          </div>
+          <div class="guild-actions">
+            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="speed" ${trainDisSpeed ? "disabled" : ""} title="Тренировка скорости">⚡ ${m.stats.speed >= 8 ? "MAX" : costSpeed + "м"}</button>
+            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="safety" ${trainDisSafety ? "disabled" : ""} title="Тренировка безопасности">🛡 ${m.stats.safety >= 8 ? "MAX" : costSafety + "м"}</button>
+            <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="yield" ${trainDisYield ? "disabled" : ""} title="Тренировка добычи">⛏ ${m.stats.yield >= 8 ? "MAX" : costYield + "м"}</button>
+            <button class="guild-fire-btn" data-fire-miner="${m.id}" title="Уволить шахтёра">Уволить</button>
+          </div>
         </div>
       </div>`;
     })
@@ -755,8 +787,7 @@ function renderGuildDiff(state) {
   const wrap = document.getElementById("guild-diff-buttons");
   if (!wrap) return;
   wrap.querySelectorAll("[data-guild-diff]").forEach((btn) => {
-    const k = btn.getAttribute("data-guild-diff");
-    btn.classList.toggle("active", k === state.difficulty);
+    btn.classList.toggle("active", btn.getAttribute("data-guild-diff") === state.difficulty);
   });
 }
 
@@ -769,17 +800,23 @@ function renderGuildUpgrades(state) {
     const maxed = lvl >= u.maxLevel;
     const nextCost = maxed ? 0 : u.costs[lvl];
     const canBuy = !maxed && silver >= nextCost;
+    const dots = Array.from({ length: u.maxLevel }, (_, i) =>
+      `<span class="guild-upg-dot${i < lvl ? " filled" : ""}"></span>`
+    ).join("");
     return `
-      <div class="guild-upg-item ${maxed ? "maxed" : ""}">
-        <div class="guild-upg-ico">${u.icon}</div>
-        <div class="guild-upg-body">
-          <div class="guild-upg-title">${u.label}</div>
+      <div class="guild-upg-row${maxed ? " maxed" : ""}">
+        <div class="guild-upg-icon">${u.icon}</div>
+        <div class="guild-upg-info">
+          <div class="guild-upg-name">${u.label}</div>
           <div class="guild-upg-desc">${u.desc}</div>
-          <div class="guild-upg-meta">Уровень: ${lvl}/${u.maxLevel}${maxed ? " · MAX" : ` · ${nextCost} монет`}</div>
+          <div class="guild-upg-progress">${dots}</div>
         </div>
-        <button class="guild-mini-btn btn-primary" title="Купить улучшение гильдии за монеты" data-buy-guild-upg="${u.id}" ${canBuy ? "" : "disabled"}>
-          ${maxed ? "MAX" : "Купить"}
-        </button>
+        <div class="guild-upg-side">
+          <span class="guild-upg-cost">${maxed ? "МАКСИМУМ" : `${nextCost} монет`}</span>
+          <button class="guild-buy-btn" data-buy-guild-upg="${u.id}" ${canBuy ? "" : "disabled"}>
+            ${maxed ? "✓" : "Купить"}
+          </button>
+        </div>
       </div>`;
   }).join("");
 }
@@ -788,14 +825,14 @@ function renderGuildLogs(state) {
   const wrap = document.getElementById("guild-log");
   if (!wrap) return;
   if (!state.logs.length) {
-    wrap.innerHTML = '<div class="guild-empty">Журнал пуст. События появятся после первых рейсов.</div>';
+    wrap.innerHTML = '<div class="guild-empty-state">Журнал пуст — события появятся после первых рейсов.</div>';
     return;
   }
   wrap.innerHTML = state.logs
-    .slice(0, 12)
+    .slice(0, 15)
     .map((x) => {
       const t = new Date(x.at).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
-      return `<div class="guild-log-item ${x.tone ?? "neutral"}"><span class="guild-log-time">${t}</span><span class="guild-log-text">${x.text}</span></div>`;
+      return `<div class="guild-log-row ${x.tone ?? "neutral"}"><span class="guild-log-time">${t}</span><span class="guild-log-text">${x.text}</span></div>`;
     })
     .join("");
 }
@@ -890,82 +927,117 @@ function bindGuildHandlers() {
 export function buildMinersGuildScreen() {
   return `
   <div id="screen-guild" class="screen">
-    <div class="guild-shell">
-      <section class="panel guild-overview-panel">
-        <div class="panel-header">
-          <span class="icon">🏛</span> ГИЛЬДИЯ ШАХТЁРОВ
-          <div class="guild-header-actions">
-            <button class="guild-mini-btn btn-primary" id="guild-rename-btn">Название</button>
-            <button class="guild-mini-btn btn-primary" id="guild-back-btn">← Меню</button>
-          </div>
+
+    <nav class="gacha-topbar">
+      <div class="gacha-topbar-brand">
+        <span class="gacha-topbar-emoji">🏛</span>
+        <span class="gacha-topbar-title" id="guild-name">Гильдия шахтёров</span>
+      </div>
+      <div class="gacha-topbar-stats">
+        <div class="resource-chip">
+          <span class="resource-dot" style="background:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></span>
+          <span class="resource-val" id="guild-silver">0</span>
+          <span class="resource-label">монет</span>
         </div>
-        <div class="panel-body guild-overview-body">
-          <div class="guild-name-card">
-            <div class="guild-label">Твоя гильдия</div>
-            <div class="guild-name" id="guild-name">Безымянная гильдия</div>
-          </div>
-
-          <div class="guild-stats-grid">
-            <div class="guild-stat" title="Доступные монеты для найма, обучения и улучшений"><span>Баланс</span><strong id="guild-silver">0</strong></div>
-            <div class="guild-stat" title="Текущий размер бригады и лимит мест"><span>👷 Шахтёры</span><strong id="guild-miners">0/0</strong></div>
-            <div class="guild-stat" title="Всего нанятых шахтеров за всю игру"><span>🧑‍💼 Нанято</span><strong id="guild-hired">0</strong></div>
-            <div class="guild-stat" title="Сколько шахтеров погибло в рейсах"><span>☠ Потери</span><strong id="guild-deaths">0</strong></div>
-            <div class="guild-stat" title="Общее количество руды, добытое гильдией"><span>⛏ Добыто</span><strong id="guild-ore-mined">0</strong></div>
-            <div class="guild-stat" title="Сложность рейсов, которую ты выбрал"><span>🧭 Режим</span><strong id="guild-mode">Средняя</strong></div>
-            <div class="guild-stat" title="Базовая длительность рейса до бонусов от статов"><span>⏱ База рейса</span><strong id="guild-run-time">0с</strong></div>
-            <div class="guild-stat" title="Базовый риск гибели до бонусов от статов и улучшений"><span>⚠ База риска</span><strong id="guild-death-risk">0%</strong></div>
-            <div class="guild-stat" title="Среднее настроение всех активных шахтеров"><span>🙂 Настроение</span><strong id="guild-mood">0%</strong></div>
-            <div class="guild-stat" title="Сколько монет суммарно выплачено зарплатами"><span>💰 Зарплаты</span><strong id="guild-salary-paid">0</strong></div>
-          </div>
-
-          <div class="guild-diff-row">
-            <span class="guild-label">Сложность рейсов</span>
-            <div class="guild-diff-buttons" id="guild-diff-buttons">
-              <button class="guild-mini-btn btn-primary" title="Низкий риск и низкая добыча. Для стабильного фарма." data-guild-diff="easy">🟢 Лёгкая</button>
-              <button class="guild-mini-btn btn-primary" title="Сбалансированный режим риска и добычи." data-guild-diff="normal">🟡 Средняя</button>
-              <button class="guild-mini-btn btn-primary" title="Высокий риск и высокая добыча. Для агрессивной игры." data-guild-diff="hard">🔴 Сложная</button>
-            </div>
-          </div>
+        <div class="resource-chip">
+          <span>👷</span>
+          <span class="resource-val" id="guild-miners">0/0</span>
         </div>
-      </section>
+        <div class="resource-chip">
+          <span class="resource-val" id="guild-ore-mined">0</span>
+          <span class="resource-label">руды добыто</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="topbar-btn" id="guild-rename-btn">✏ Название</button>
+        <button class="topbar-btn" id="guild-back-btn">← Меню</button>
+      </div>
+    </nav>
 
-      <div class="guild-main-grid">
-        <div class="guild-workstack">
-          <section class="panel guild-candidates-panel">
-            <div class="panel-header">
-              <span class="icon">🧑‍💼</span> КАНДИДАТЫ
-              <button class="guild-mini-btn btn-primary" id="guild-candidate-toggle" type="button">Свернуть</button>
-            </div>
-            <div class="panel-body guild-list-body">
-              <div class="guild-candidate-list" id="guild-candidate-list"></div>
-            </div>
-          </section>
+    <div class="guild-content">
+      <div class="guild-layout">
 
-          <section class="panel guild-miners-panel">
-            <div class="panel-header"><span class="icon">👷</span> БРИГАДА</div>
-            <div class="panel-body guild-list-body">
-              <div class="guild-miner-list" id="guild-miner-list"></div>
+        <!-- LEFT: режим + бригада + кандидаты -->
+        <div class="guild-left-col">
+
+          <!-- Режим & метрики -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-header-icon">🧭</span>
+              <span class="card-header-text">Режим гильдии</span>
             </div>
-          </section>
+            <div class="card-body">
+              <div class="guild-diff-btns" id="guild-diff-buttons">
+                <button class="guild-diff-btn" data-guild-diff="easy" title="Низкий риск и добыча">🟢 Лёгкая</button>
+                <button class="guild-diff-btn" data-guild-diff="normal" title="Сбалансированный режим">🟡 Средняя</button>
+                <button class="guild-diff-btn" data-guild-diff="hard" title="Высокий риск и добыча">🔴 Сложная</button>
+              </div>
+              <div class="guild-metrics-row">
+                <div class="guild-metric" title="Базовое время рейса"><div class="guild-metric-label">⏱ Рейс</div><div class="guild-metric-val" id="guild-run-time">—</div></div>
+                <div class="guild-metric" title="Базовый риск гибели за рейс"><div class="guild-metric-label">☠ Риск</div><div class="guild-metric-val" id="guild-death-risk">—</div></div>
+                <div class="guild-metric" title="Среднее настроение бригады"><div class="guild-metric-label">🙂 Настрой</div><div class="guild-metric-val" id="guild-mood">—</div></div>
+                <div class="guild-metric" title="Всего выплачено зарплат"><div class="guild-metric-label">💰 Зарплаты</div><div class="guild-metric-val" id="guild-salary-paid">0</div></div>
+                <div class="guild-metric" title="Погибших за всё время"><div class="guild-metric-label">☠ Потери</div><div class="guild-metric-val" id="guild-deaths">0</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Бригада -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-header-icon">👷</span>
+              <span class="card-header-text">Бригада</span>
+            </div>
+            <div class="card-body card-body-flush">
+              <div id="guild-miner-list"></div>
+            </div>
+          </div>
+
+          <!-- Кандидаты -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-header-icon">🧑‍💼</span>
+              <span class="card-header-text">Кандидаты</span>
+              <button class="topbar-btn" id="guild-candidate-toggle" style="margin-left:auto;">Свернуть</button>
+            </div>
+            <div id="guild-candidate-wrap">
+              <div class="card-body card-body-flush">
+                <div id="guild-candidate-list"></div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        <div class="guild-side-stack">
-          <section class="panel guild-upgrades-panel">
-            <div class="panel-header"><span class="icon">⚙</span> УЛУЧШЕНИЯ</div>
-            <div class="panel-body guild-side-body">
-              <div class="guild-upgrades" id="guild-upgrades"></div>
-            </div>
-          </section>
+        <!-- RIGHT: улучшения + журнал -->
+        <div class="guild-right-col">
 
-          <section class="panel guild-log-panel">
-            <div class="panel-header"><span class="icon">📜</span> ЖУРНАЛ</div>
-            <div class="panel-body guild-side-body">
-              <div class="guild-log" id="guild-log"></div>
+          <!-- Улучшения -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-header-icon">⚙</span>
+              <span class="card-header-text">Улучшения</span>
             </div>
-          </section>
+            <div class="card-body">
+              <div id="guild-upgrades"></div>
+            </div>
+          </div>
+
+          <!-- Журнал -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-header-icon">📜</span>
+              <span class="card-header-text">Журнал событий</span>
+            </div>
+            <div class="card-body card-body-flush">
+              <div id="guild-log"></div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
+
   </div>`;
 }
 
