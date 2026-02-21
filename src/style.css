@@ -4720,3 +4720,135 @@ html, body {
     height: 14px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ПРЕ-РЕЙД МОДАЛЬ                                                           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.pre-raid-modal-inner {
+  max-width: 540px;
+  width: 100%;
+}
+
+.pre-raid-body {
+  padding: 0 !important;
+}
+
+.pre-raid-depth-info {
+  padding: 10px 16px 6px;
+  background: rgba(0,0,0,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px;
+  color: var(--text-dim, #9a8a7a);
+}
+
+.pre-raid-info-row {
+  margin-bottom: 4px;
+}
+
+.pre-raid-info-row strong {
+  color: #e8c84a;
+}
+
+.pre-raid-ore-mix {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.pre-raid-gold-line {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--text-dim, #9a8a7a);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.pre-raid-gold-line strong {
+  color: #e8c84a;
+  font-size: 15px;
+}
+
+.pre-raid-consumables-title {
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim, #9a8a7a);
+}
+
+/* Один расходник */
+.pre-raid-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.15s;
+}
+
+.pre-raid-item:last-child {
+  border-bottom: none;
+}
+
+.pre-raid-item:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.pre-raid-item-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+  width: 34px;
+  text-align: center;
+}
+
+.pre-raid-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pre-raid-item-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #e2d5c4;
+}
+
+.pre-raid-item-desc {
+  font-size: 12px;
+  color: var(--text-dim, #9a8a7a);
+  margin-top: 2px;
+}
+
+.pre-raid-item-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.pre-raid-item-stock {
+  font-size: 16px;
+  font-weight: 700;
+  color: #7ec8e3;
+  min-width: 28px;
+  text-align: right;
+}
+
+.pre-raid-buy-btn {
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+  white-space: nowrap;
+}
+
+.pre-raid-club-hint {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--text-dim, #9a8a7a);
+  font-style: italic;
+}
+
+.pre-raid-btns {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.12);
+}

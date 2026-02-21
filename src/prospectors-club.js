@@ -3,23 +3,24 @@ const KEY_PROSPECTORS_STATE = "delve_prospectors_state_v1";
 
 export const PROSPECTORS_UNLOCK_COST = 120;
 
+// ─── РАСХОДНИКИ (определения для пре-рейд магазина) ───────────────────────────
+// basePrice — стоимость в монетах на глубине 1 (растёт с глубиной в main.js)
+
 export const PROSPECTOR_TOOLS = [
   {
     id: "dynamite",
     label: "Динамит",
     icon: "💣",
-    desc: "Расчищает область 3x3 без урона по HP.",
-    priceSilver: 28,
-    baseQty: 1,
+    desc: "Расчищает область 3×3 без урона по HP.",
+    basePrice: 40,
     targeted: true,
   },
   {
     id: "flare",
-    label: "Фальшфейер",
+    label: "Фонарь",
     icon: "🔦",
-    desc: "Подсвечивает руду в области 5x5.",
-    priceSilver: 18,
-    baseQty: 1,
+    desc: "Подсвечивает руду в области 5×5.",
+    basePrice: 25,
     targeted: true,
   },
   {
@@ -27,8 +28,7 @@ export const PROSPECTOR_TOOLS = [
     label: "Стабилизатор",
     icon: "🧯",
     desc: "Делает нестабильную клетку безопасной.",
-    priceSilver: 24,
-    baseQty: 1,
+    basePrice: 35,
     targeted: true,
   },
   {
@@ -36,8 +36,7 @@ export const PROSPECTOR_TOOLS = [
     label: "Аптечка",
     icon: "🩹",
     desc: "Восстанавливает 1 HP в вылазке.",
-    priceSilver: 20,
-    baseQty: 1,
+    basePrice: 30,
     targeted: false,
   },
   {
@@ -45,11 +44,12 @@ export const PROSPECTOR_TOOLS = [
     label: "Магнит руды",
     icon: "🧲",
     desc: "Собирает всю уже подсвеченную руду.",
-    priceSilver: 34,
-    baseQty: 1,
+    basePrice: 50,
     targeted: false,
   },
 ];
+
+// ─── ПАССИВНЫЕ УЛУЧШЕНИЯ (покупаются в клубе, работают постоянно) ─────────────
 
 export const PROSPECTOR_UPGRADES = [
   {
@@ -57,49 +57,53 @@ export const PROSPECTOR_UPGRADES = [
     label: "Страховой полис",
     icon: "🛡",
     desc: "Снижает потери руды при досрочном выходе на 20%.",
-    priceSilver: 120,
+    priceGold: 200,
   },
   {
     id: "helmet",
     label: "Усиленная каска",
     icon: "⛑",
     desc: "+1 к стартовому HP в вылазке.",
-    priceSilver: 140,
-  },
-  {
-    id: "discount",
-    label: "Карта скидок",
-    icon: "💸",
-    desc: "-20% стоимость расходников клуба.",
-    priceSilver: 150,
-  },
-  {
-    id: "supplier",
-    label: "Контракт снабжения",
-    icon: "📦",
-    desc: "При покупке расходника получаешь +1 доп. шт.",
-    priceSilver: 130,
+    priceGold: 250,
   },
   {
     id: "buzz",
     label: "Сарафанное радио",
     icon: "📣",
     desc: "+20% к потоку покупателей в магазине.",
-    priceSilver: 170,
+    priceGold: 300,
+  },
+  {
+    id: "vein_sense",
+    label: "Рудная жилка",
+    icon: "💎",
+    desc: "При добыче руды 15% шанс получить +1 руду следующего ценового уровня (медь→серебро, и т.д.).",
+    priceGold: 380,
+  },
+  {
+    id: "experienced",
+    label: "Шахтерский опыт",
+    icon: "⏱",
+    desc: "Сокращает штраф AFK-обвала от глубины на 10 секунд.",
+    priceGold: 260,
   },
 ];
 
-let _getSilver = null;
-let _spendSilver = null;
-let _onBack = null;
+// ─── СОСТОЯНИЕ КОЛБЭКОВ ────────────────────────────────────────────────────────
+
+let _getGold       = null;
+let _spendGold     = null;
+let _onBack        = null;
 let _onStateChanged = null;
-let _onSpendSilver = null;
+let _onSpendGold   = null;
+
+// ─── ХРАНИЛИЩЕ ────────────────────────────────────────────────────────────────
 
 function createDefaultState() {
   return {
     inventory: Object.fromEntries(PROSPECTOR_TOOLS.map((t) => [t.id, 0])),
-    upgrades: Object.fromEntries(PROSPECTOR_UPGRADES.map((u) => [u.id, false])),
-    spentSilver: 0,
+    upgrades:  Object.fromEntries(PROSPECTOR_UPGRADES.map((u) => [u.id, false])),
+    spentGold:  0,
     boughtTools: 0,
   };
 }
@@ -109,7 +113,7 @@ function deepMerge(base, patch) {
   if (!patch || typeof patch !== "object") return { ...base };
   const out = { ...base };
   for (const key of Object.keys(base)) {
-    const baseVal = base[key];
+    const baseVal  = base[key];
     const patchVal = patch[key];
     if (baseVal && typeof baseVal === "object" && !Array.isArray(baseVal)) {
       out[key] = deepMerge(baseVal, patchVal);
@@ -148,6 +152,8 @@ export function resetProspectorsClub() {
   localStorage.removeItem(KEY_PROSPECTORS_STATE);
 }
 
+// ─── ПАССИВНЫЕ ЭФФЕКТЫ ────────────────────────────────────────────────────────
+
 export function hasProspectorUpgrade(id) {
   return !!getProspectorsState().upgrades[id];
 }
@@ -155,13 +161,15 @@ export function hasProspectorUpgrade(id) {
 export function getProspectorPassiveEffects() {
   const s = getProspectorsState();
   return {
-    extraStartHp: s.upgrades.helmet ? 1 : 0,
-    escapeLossMultiplier: s.upgrades.insurance ? 0.8 : 1,
-    toolsDiscountMultiplier: s.upgrades.discount ? 0.8 : 1,
-    purchaseBonusQty: s.upgrades.supplier ? 1 : 0,
-    shopVisitorMultiplier: s.upgrades.buzz ? 1.2 : 1,
+    extraStartHp:          s.upgrades.helmet      ? 1    : 0,
+    escapeLossMultiplier:  s.upgrades.insurance   ? 0.8  : 1,
+    shopVisitorMultiplier: s.upgrades.buzz        ? 1.2  : 1,
+    veinSenseChance:       s.upgrades.vein_sense  ? 0.15 : 0,
+    idleCollapseBonus:     s.upgrades.experienced ? 10   : 0,
   };
 }
+
+// ─── ИНВЕНТАРЬ ────────────────────────────────────────────────────────────────
 
 export function getProspectorInventory() {
   return { ...getProspectorsState().inventory };
@@ -176,84 +184,55 @@ export function consumeProspectorTool(toolId, qty = 1) {
   return true;
 }
 
-function getToolPrice(tool, state = getProspectorsState()) {
-  const hasDiscount = !!state.upgrades.discount;
-  return Math.max(1, Math.round(tool.priceSilver * (hasDiscount ? 0.8 : 1)));
-}
-
-function getToolQtyGain(state = getProspectorsState()) {
-  return 1 + (state.upgrades.supplier ? 1 : 0);
-}
-
-function buyTool(toolId) {
+// Добавить расходник в инвентарь (вызывается из pre-raid магазина в main.js)
+export function addConsumableToInventory(toolId, qty = 1, goldSpent = 0) {
   const state = getProspectorsState();
-  const tool = PROSPECTOR_TOOLS.find((x) => x.id === toolId);
-  if (!tool) return false;
-  const price = getToolPrice(tool, state);
-  if (!_spendSilver || !_spendSilver(price)) return false;
-
-  const qty = tool.baseQty + getToolQtyGain(state) - 1;
+  if (!(toolId in state.inventory)) return false;
   state.inventory[toolId] = (state.inventory[toolId] ?? 0) + qty;
-  state.spentSilver += price;
-  state.boughtTools += qty;
+  state.boughtTools = (state.boughtTools ?? 0) + qty;
+  state.spentGold   = (state.spentGold   ?? 0) + goldSpent;
   saveProspectorsState(state);
-  _onSpendSilver?.(price);
   return true;
 }
+
+// ─── ПОКУПКА АПГРЕЙДА В КЛУБЕ ─────────────────────────────────────────────────
 
 function buyUpgrade(upgradeId) {
   const state = getProspectorsState();
   const upg = PROSPECTOR_UPGRADES.find((x) => x.id === upgradeId);
   if (!upg || state.upgrades[upgradeId]) return false;
-  if (!_spendSilver || !_spendSilver(upg.priceSilver)) return false;
+  if (!_spendGold || !_spendGold(upg.priceGold)) return false;
 
   state.upgrades[upgradeId] = true;
-  state.spentSilver += upg.priceSilver;
+  state.spentGold = (state.spentGold ?? 0) + upg.priceGold;
   saveProspectorsState(state);
-  _onSpendSilver?.(upg.priceSilver);
+  _onSpendGold?.(upg.priceGold);
   return true;
 }
 
-function renderConsumables(state) {
-  const wrap = document.getElementById("prospectors-consumables");
-  if (!wrap) return;
-  const silver = _getSilver ? _getSilver() : 0;
+// ─── РЕНДЕР ЭКРАНА КЛУБА ──────────────────────────────────────────────────────
 
-  wrap.innerHTML = PROSPECTOR_TOOLS.map((tool) => {
-    const price = getToolPrice(tool, state);
-    const canBuy = silver >= price;
-    const gain = tool.baseQty + getToolQtyGain(state) - 1;
-    const stock = state.inventory[tool.id] ?? 0;
-    return `
-      <div class="prospectors-item">
-        <div class="prospectors-icon">${tool.icon}</div>
-        <div class="prospectors-body">
-          <div class="prospectors-title">${tool.label}</div>
-          <div class="prospectors-desc">${tool.desc}</div>
-          <div class="prospectors-meta">Цена: ${price} монет · На складе: ${stock}</div>
-        </div>
-        <button class="prospectors-buy-btn btn-primary" data-buy-tool="${tool.id}" ${canBuy ? "" : "disabled"}>
-          Купить (+${gain})
-        </button>
-      </div>`;
-  }).join("");
+function renderSummary(state) {
+  const spentEl  = document.getElementById("prospectors-spent");
+  const boughtEl = document.getElementById("prospectors-bought");
+  if (spentEl)  spentEl.textContent  = `${state.spentGold ?? 0}`;
+  if (boughtEl) boughtEl.textContent = `${state.boughtTools}`;
 }
 
 function renderUpgrades(state) {
   const wrap = document.getElementById("prospectors-upgrades");
   if (!wrap) return;
-  const silver = _getSilver ? _getSilver() : 0;
 
   wrap.innerHTML = PROSPECTOR_UPGRADES.map((upg) => {
-    const owned = !!state.upgrades[upg.id];
-    const canBuy = !owned && silver >= upg.priceSilver;
+    const owned  = !!state.upgrades[upg.id];
+    const canBuy = !owned && _getGold && _getGold() >= upg.priceGold;
     return `
       <div class="prospectors-item ${owned ? "prospectors-item-owned" : ""}">
         <div class="prospectors-icon">${upg.icon}</div>
         <div class="prospectors-body">
           <div class="prospectors-title">${upg.label}</div>
           <div class="prospectors-desc">${upg.desc}</div>
-          <div class="prospectors-meta">${owned ? "Куплено" : `Цена: ${upg.priceSilver} монет`}</div>
+          <div class="prospectors-meta">${owned ? "✓ Куплено" : `Цена: ${upg.priceGold} монет`}</div>
         </div>
         <button class="prospectors-buy-btn btn-primary" data-buy-upgrade="${upg.id}" ${canBuy ? "" : "disabled"}>
           ${owned ? "✓ Есть" : "Купить"}
@@ -262,42 +241,13 @@ function renderUpgrades(state) {
   }).join("");
 }
 
-function renderSummary(state) {
-  const silverEl = document.getElementById("prospectors-silver");
-  const spentEl = document.getElementById("prospectors-spent");
-  const boughtEl = document.getElementById("prospectors-bought");
-  if (silverEl) silverEl.textContent = `${_getSilver ? _getSilver() : 0} монет`;
-  if (spentEl) spentEl.textContent = `${state.spentSilver}`;
-  if (boughtEl) boughtEl.textContent = `${state.boughtTools}`;
-}
-
 export function renderProspectorsUpgrades() {
   const state = getProspectorsState();
   renderSummary(state);
-  renderConsumables(state);
   renderUpgrades(state);
 }
 
-function bindProspectorActions() {
-  const toolsWrap = document.getElementById("prospectors-consumables");
-  const upgradesWrap = document.getElementById("prospectors-upgrades");
-  if (toolsWrap) {
-    toolsWrap.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-buy-tool]");
-      if (!btn) return;
-      const id = btn.getAttribute("data-buy-tool");
-      if (buyTool(id)) renderProspectorsUpgrades();
-    });
-  }
-  if (upgradesWrap) {
-    upgradesWrap.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-buy-upgrade]");
-      if (!btn) return;
-      const id = btn.getAttribute("data-buy-upgrade");
-      if (buyUpgrade(id)) renderProspectorsUpgrades();
-    });
-  }
-}
+// ─── HTML ЭКРАНА ──────────────────────────────────────────────────────────────
 
 export function buildProspectorsScreen() {
   return `
@@ -309,17 +259,11 @@ export function buildProspectorsScreen() {
       </div>
       <div class="panel-body">
         <p class="prospectors-intro">
-          Арсенал для рискованных вылазок: расходники + постоянные апгрейды.
+          Постоянные улучшения шахтера. Расходники покупай прямо перед вылазкой.
         </p>
         <div class="prospectors-summary">
-          <span>Баланс: <strong id="prospectors-silver">0</strong></span>
-          <span>Потрачено: <strong id="prospectors-spent">0</strong></span>
-          <span>Куплено предметов: <strong id="prospectors-bought">0</strong></span>
-        </div>
-
-        <div class="prospectors-section">
-          <h3 class="prospectors-section-title">Расходники</h3>
-          <div id="prospectors-consumables" class="prospectors-list"></div>
+          <span>Потрачено: <strong id="prospectors-spent">0</strong> монет</span>
+          <span>Инструментов куплено: <strong id="prospectors-bought">0</strong></span>
         </div>
 
         <div class="prospectors-section">
@@ -331,21 +275,27 @@ export function buildProspectorsScreen() {
   </div>`;
 }
 
-export function initProspectorsScreen({
-  onBack,
-  getSilver,
-  spendSilver,
-  onStateChanged,
-  onSpendSilver,
-}) {
-  _onBack = onBack;
-  _getSilver = getSilver;
-  _spendSilver = spendSilver;
+// ─── ИНИЦИАЛИЗАЦИЯ ────────────────────────────────────────────────────────────
+
+export function initProspectorsScreen({ onBack, getGold, spendGold, onStateChanged, onSpendGold }) {
+  _onBack         = onBack;
+  _getGold        = getGold;
+  _spendGold      = spendGold;
   _onStateChanged = onStateChanged;
-  _onSpendSilver = onSpendSilver;
+  _onSpendGold    = onSpendGold;
 
   const backBtn = document.getElementById("prospectors-back-btn");
   if (backBtn) backBtn.addEventListener("click", () => _onBack?.());
-  bindProspectorActions();
+
+  const upgradesWrap = document.getElementById("prospectors-upgrades");
+  if (upgradesWrap) {
+    upgradesWrap.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-buy-upgrade]");
+      if (!btn) return;
+      const id = btn.getAttribute("data-buy-upgrade");
+      if (buyUpgrade(id)) renderProspectorsUpgrades();
+    });
+  }
+
   renderProspectorsUpgrades();
 }

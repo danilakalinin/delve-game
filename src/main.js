@@ -74,6 +74,7 @@ import {
   PROSPECTORS_UNLOCK_COST,
   renderProspectorsUpgrades,
   resetProspectorsClub,
+  addConsumableToInventory,
 } from "./prospectors-club.js";
 import {
   buildMinersGuildScreen,
@@ -192,6 +193,31 @@ function getMineDepthIdlePenaltySec(level = getMineDepthLevel()) {
   return Math.min(25, Math.round((level - 1) * 1.2));
 }
 
+// ─── СОСТАВ РУДЫ ПО ГЛУБИНЕ ───────────────────────────────────────────────────
+// Целевое распределение долей руды при максимальной глубине (depth = 30).
+// Чем глубже — тем богаче состав. На глубине 1 используются базовые шансы из DIFFICULTIES.
+
+const DEEP_ORE_RATIOS = {
+  easy:   { [ORE_COPPER]: 0.00, [ORE_SILVER]: 0.70, [ORE_GOLD]: 0.28, [ORE_DIAMOND]: 0.02 },
+  normal: { [ORE_COPPER]: 0.05, [ORE_SILVER]: 0.40, [ORE_GOLD]: 0.42, [ORE_DIAMOND]: 0.13 },
+  hard:   { [ORE_COPPER]: 0.00, [ORE_SILVER]: 0.20, [ORE_GOLD]: 0.48, [ORE_DIAMOND]: 0.32 },
+};
+
+// Линейная интерполяция от базового состава → глубокого состава
+// t = 0 (глубина 1) … 1 (глубина MINE_DEPTH_MAX)
+function shiftOreComposition(scaledChances, diffKey, t) {
+  if (t <= 0) return scaledChances;
+  const total = Object.values(scaledChances).reduce((sum, v) => sum + v, 0);
+  const targetRatios = DEEP_ORE_RATIOS[diffKey];
+  if (!targetRatios || total <= 0) return scaledChances;
+  const out = {};
+  for (const [oreType, chance] of Object.entries(scaledChances)) {
+    const targetChance = total * (targetRatios[oreType] ?? 0);
+    out[oreType] = chance * (1 - t) + targetChance * t;
+  }
+  return out;
+}
+
 function scaleOreChanceMap(baseMap, mult, maxTotal) {
   const baseTotal = Object.values(baseMap).reduce((sum, v) => sum + v, 0);
   if (baseTotal <= 0) return { ...baseMap };
@@ -207,15 +233,25 @@ function scaleOreChanceMap(baseMap, mult, maxTotal) {
 function getDepthDifficultyOverrides(diffKey, depthLevel = getMineDepthLevel()) {
   const base = DIFFICULTIES[diffKey];
   if (!base) return {};
-  const oreMult = getMineDepthOreMultiplier(depthLevel);
+  const oreMult       = getMineDepthOreMultiplier(depthLevel);
   const unstableBonus = getMineDepthUnstableBonus(depthLevel);
   const nextUnstableChance = Math.min(0.85, base.unstableChance + unstableBonus);
-  const maxOreTotal = Math.max(0.02, 1 - nextUnstableChance - 0.02);
-  const idlePenalty = getMineDepthIdlePenaltySec(depthLevel);
+  const maxOreTotal   = Math.max(0.02, 1 - nextUnstableChance - 0.02);
+  const idlePenalty   = getMineDepthIdlePenaltySec(depthLevel);
+
+  // Пассивный бонус «Шахтерский опыт» — сокращает штраф AFK-обвала
+  const passives   = getProspectorPassiveEffects();
+  const idleBonus  = passives.idleCollapseBonus ?? 0;
+
+  // Состав руды: линейно сдвигаем от базового к «глубокому» по мере прокачки глубины
+  const t = MINE_DEPTH_MAX > 1 ? (depthLevel - 1) / (MINE_DEPTH_MAX - 1) : 0;
+  const scaledChances  = scaleOreChanceMap(base.oreChances, oreMult, maxOreTotal);
+  const shiftedChances = shiftOreComposition(scaledChances, diffKey, t);
+
   return {
-    unstableChance: nextUnstableChance,
-    idleCollapseSec: Math.max(10, base.idleCollapseSec - idlePenalty),
-    oreChances: scaleOreChanceMap(base.oreChances, oreMult, maxOreTotal),
+    unstableChance:  nextUnstableChance,
+    idleCollapseSec: Math.max(10, base.idleCollapseSec - idlePenalty + idleBonus),
+    oreChances:      shiftedChances,
   };
 }
 
@@ -744,6 +780,25 @@ document.getElementById("app").innerHTML = `
       </div>
     </div>
   </div>
+
+  <!-- ══ ПРЕ-РЕЙД: ПОДГОТОВКА К ВЫЛАЗКЕ ══ -->
+  <div id="pre-raid-modal" class="modal-overlay" style="display:none;">
+    <div class="modal panel pre-raid-modal-inner">
+      <div class="panel-header" id="pre-raid-title">🎒 ПОДГОТОВКА К ВЫЛАЗКЕ</div>
+      <div class="modal-body pre-raid-body">
+        <div class="pre-raid-depth-info" id="pre-raid-depth-info"></div>
+        <div class="pre-raid-gold-line">
+          💰 Монеты: <strong id="pre-raid-gold">0</strong>
+        </div>
+        <div class="pre-raid-consumables-title">Расходники на вылазку</div>
+        <div id="pre-raid-consumables"></div>
+        <div class="modal-buttons pre-raid-btns">
+          <button class="modal-btn btn-primary" id="pre-raid-start">⛏ НАЧАТЬ</button>
+          <button class="modal-btn modal-btn-cancel btn-primary" id="pre-raid-cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
 `;
 
 // ─── REFS ─────────────────────────────────────────────────────────────────────
@@ -821,6 +876,7 @@ const guildNameModalTitle = document.getElementById("guild-name-modal-title");
 const guildNameInput = document.getElementById("guild-name-input");
 const guildNameCancelBtn = document.getElementById("guild-name-cancel");
 const guildNameSaveBtn = document.getElementById("guild-name-save");
+const preRaidModal = document.getElementById("pre-raid-modal");
 const musicMuteBtn = document.getElementById("music-mute-btn");
 const musicVolumeInput = document.getElementById("music-volume");
 const musicVolumeValue = document.getElementById("music-volume-value");
@@ -1059,12 +1115,25 @@ function calcOreGainMultiplier() {
   return 1 + bonus;
 }
 
+// Следующий уровень ценности руды для пассива «Рудная жилка»
+function nextOreTier(oreType) {
+  const tiers = [ORE_COPPER, ORE_SILVER, ORE_GOLD, ORE_DIAMOND];
+  const idx = tiers.indexOf(oreType);
+  return idx >= 0 && idx < tiers.length - 1 ? tiers[idx + 1] : null;
+}
+
 function grantRunOre(oreType, baseAmount = 1) {
   if (!state || baseAmount <= 0) return 0;
-  const t = oreType ?? ORE_COPPER;
-  let granted = 0;
+  const t       = oreType ?? ORE_COPPER;
+  const passives = getProspectorPassiveEffects();
+  let granted   = 0;
   for (let i = 0; i < baseAmount; i += 1) {
     granted += calcOreGainMultiplier();
+    // «Рудная жилка»: 15% шанс получить +1 руду следующего уровня
+    if (passives.veinSenseChance && Math.random() < passives.veinSenseChance) {
+      const nextTier = nextOreTier(t);
+      if (nextTier) state.ores[nextTier] = (state.ores[nextTier] ?? 0) + 1;
+    }
   }
   state.ores[t] = (state.ores[t] ?? 0) + granted;
   return granted;
@@ -1094,6 +1163,121 @@ function applyStartPickaxeEffects() {
   toReveal.forEach(({ r, c }) => {
     state.grid[r][c].state = CELL_REVEALED;
   });
+}
+
+// ─── ПРЕ-РЕЙД МОДАЛЬ ─────────────────────────────────────────────────────────
+
+let _preRaidDiffKey = null;
+
+// Стоимость расходника с учётом глубины: +50% за каждые 29 уровней
+function getConsumableDepthPrice(basePrice, depth) {
+  const mult = 1 + (depth - 1) * (1.5 / (MINE_DEPTH_MAX - 1));
+  return Math.round(basePrice * mult);
+}
+
+// Строка с процентным составом руды на текущей глубине (для предпросмотра)
+function getOreCompositionLine(diffKey, depth) {
+  const overrides = getDepthDifficultyOverrides(diffKey, depth);
+  const chances   = overrides.oreChances ?? {};
+  const total     = Object.values(chances).reduce((sum, v) => sum + v, 0);
+  if (total <= 0) return "—";
+  return Object.entries(chances)
+    .filter(([, v]) => v > 0.001)
+    .sort(([, a], [, b]) => b - a)
+    .map(([oreType, v]) => {
+      const pct = Math.round((v / total) * 100);
+      return `<span class="ore-color-${oreType}">${ORE_CONFIG[oreType].label}: ${pct}%</span>`;
+    })
+    .join(" · ");
+}
+
+function renderPreRaidConsumables() {
+  const wrap = document.getElementById("pre-raid-consumables");
+  if (!wrap) return;
+
+  const depth    = getMineDepthLevel();
+  const gold     = getGold();
+  const clubOpen = hasProspectorsUnlocked();
+
+  if (!clubOpen) {
+    wrap.innerHTML = `
+      <div class="pre-raid-club-hint">
+        🔒 Открой <strong>Клуб старателей</strong> в улучшениях, чтобы покупать расходники.
+      </div>`;
+    return;
+  }
+
+  const inventory = getProspectorInventory();
+  wrap.innerHTML = PROSPECTOR_TOOLS.map((tool) => {
+    const price  = getConsumableDepthPrice(tool.basePrice, depth);
+    const stock  = inventory[tool.id] ?? 0;
+    const canBuy = gold >= price;
+    return `
+      <div class="pre-raid-item">
+        <span class="pre-raid-item-icon">${tool.icon}</span>
+        <div class="pre-raid-item-body">
+          <div class="pre-raid-item-name">${tool.label}</div>
+          <div class="pre-raid-item-desc">${tool.desc}</div>
+        </div>
+        <div class="pre-raid-item-controls">
+          <span class="pre-raid-item-stock">×${stock}</span>
+          <button
+            class="pre-raid-buy-btn btn-primary"
+            data-consumable="${tool.id}"
+            data-price="${price}"
+            ${canBuy ? "" : "disabled"}
+          >+1 · ${price}💰</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  wrap.querySelectorAll("[data-consumable]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const toolId   = btn.getAttribute("data-consumable");
+      const price    = parseInt(btn.getAttribute("data-price") ?? "0", 10);
+      if (!spendGold(price)) return;
+      addConsumableToInventory(toolId, 1, price);
+      updateStats((s) => {
+        s.resources.goldSpent += price;
+        addXp(s, 5);
+      });
+      refreshStatusBar();
+      renderStatsPanel();
+      renderPreRaidConsumables();
+      const goldEl = document.getElementById("pre-raid-gold");
+      if (goldEl) goldEl.textContent = getGold();
+    });
+  });
+}
+
+function openPreRaidModal(diffKey) {
+  _preRaidDiffKey = diffKey;
+  const depth = getMineDepthLevel();
+  const diff  = DIFFICULTIES[diffKey];
+
+  const titleEl = document.getElementById("pre-raid-title");
+  if (titleEl) titleEl.textContent = `🎒 ПОДГОТОВКА — ${diff.label.toUpperCase()} · Глубина ${depth}`;
+
+  const infoEl = document.getElementById("pre-raid-depth-info");
+  if (infoEl) {
+    const orePct    = Math.round((getMineDepthOreMultiplier(depth) - 1) * 100);
+    const riskPct   = Math.round(getMineDepthUnstableBonus(depth) * 100);
+    const oreLine   = getOreCompositionLine(diffKey, depth);
+    infoEl.innerHTML = `
+      <div class="pre-raid-info-row">Бонус руды: <strong>+${orePct}%</strong> · Риск обвалов: <strong>+${riskPct}%</strong></div>
+      <div class="pre-raid-info-row pre-raid-ore-mix">Состав: ${oreLine}</div>`;
+  }
+
+  const goldEl = document.getElementById("pre-raid-gold");
+  if (goldEl) goldEl.textContent = getGold();
+
+  renderPreRaidConsumables();
+  preRaidModal.style.display = "flex";
+}
+
+function closePreRaidModal() {
+  preRaidModal.style.display = "none";
+  _preRaidDiffKey = null;
 }
 
 // ─── ГЛАВНОЕ МЕНЮ ─────────────────────────────────────────────────────────────
@@ -1133,11 +1317,28 @@ function showStartScreen() {
     btn.className = "time-option";
     const f = DIFF_FLAVOR[key];
     const keepPct = Math.round((ESCAPE_KEEP_BASE[key] ?? 0.2) * 100);
+    // Показываем доминирующий тип руды на текущей глубине
+    const oreOverrides = getDepthDifficultyOverrides(key, depthLevel);
+    const oreChances   = oreOverrides.oreChances ?? {};
+    const oreTotal     = Object.values(oreChances).reduce((s, v) => s + v, 0);
+    const dominant     = oreTotal > 0
+      ? Object.entries(oreChances).sort(([, a], [, b]) => b - a)[0]
+      : null;
+    const dominantStr  = dominant
+      ? ` · ${ORE_CONFIG[dominant[0]].label} ${Math.round(dominant[1] / oreTotal * 100)}%`
+      : "";
+
     btn.innerHTML = `
       <span class="opt-dur">${f.mood} ${d.label}</span>
       <span class="opt-desc">${f.hint}</span>
-      <span class="opt-collapse">HP: ${d.startHp} · побег: ${keepPct}% · глубина ${depthLevel}: +${oreBonusPct}% руды / +${unstableBonusPct}% риска</span>`;
-    btn.addEventListener("click", () => startGame(key));
+      <span class="opt-collapse">HP: ${d.startHp} · побег: ${keepPct}% · г${depthLevel}: +${oreBonusPct}% руды${dominantStr}</span>`;
+    btn.addEventListener("click", () => {
+      if (hasProspectorsUnlocked()) {
+        openPreRaidModal(key);
+      } else {
+        startGame(key);
+      }
+    });
     diffOptions.appendChild(btn);
   });
 
@@ -1148,7 +1349,7 @@ function showStartScreen() {
   runToolInventory = getProspectorInventory();
   renderRunTools();
   setRunToolHint(
-    `Кирка: ${getEquippedPickaxeSummary()}. Подготовь расходники в «Клубе старателей».`,
+    `Кирка: ${getEquippedPickaxeSummary()}. Расходники можно купить перед каждой вылазкой.`,
   );
   narrate("openMenu");
 }
@@ -1195,7 +1396,7 @@ const UPGRADES_DEF = [
     cost: PROSPECTORS_UNLOCK_COST,
     currency: "gold",
     icon: prospectorsIcon,
-    desc: "Новые инструменты: бомбы и т.д.",
+    desc: "Пассивные улучшения шахтера. Расходники — перед каждой вылазкой.",
   },
   {
     id: "guild",
@@ -2020,6 +2221,18 @@ escapeCancel.addEventListener("click", () => {
   escapeModal.style.display = "none";
   escapeModalOpen = false;
   if (state) state.lastActionTime = Date.now();
+});
+
+// ─── ПРЕ-РЕЙД КНОПКИ ─────────────────────────────────────────────────────────
+
+document.getElementById("pre-raid-start")?.addEventListener("click", () => {
+  const key = _preRaidDiffKey;
+  closePreRaidModal();
+  if (key) startGame(key);
+});
+
+document.getElementById("pre-raid-cancel")?.addEventListener("click", () => {
+  closePreRaidModal();
 });
 
 // ─── КОНЕЦ ИГРЫ ───────────────────────────────────────────────────────────────
@@ -2855,15 +3068,15 @@ function safeInit(label, fn) {
 safeInit("shop-ui", () => initShopScreen(showStartScreen));
 safeInit("prospectors-ui", () =>
   initProspectorsScreen({
-    onBack: showStartScreen,
-    getSilver: getGold,
-    spendSilver: spendGold,
+    onBack:    showStartScreen,
+    getGold:   getGold,
+    spendGold: spendGold,
     onStateChanged: () => {
       renderRunTools();
       if (screenProspectors.classList.contains("active"))
         renderProspectorsUpgrades();
     },
-    onSpendSilver: (amount) => {
+    onSpendGold: (amount) => {
       updateStats((s) => {
         s.resources.goldSpent += amount;
         addXp(s, 8);
