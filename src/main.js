@@ -524,7 +524,8 @@ document.getElementById("app").innerHTML = `
 
       <!-- Launcher Hero -->
       <div class="launcher-hero">
-        <div class="launcher-play-btn">▶&nbsp;ИГРАТЬ&nbsp;В&nbsp;САПЁР</div>
+        <button class="launcher-play-btn" id="launcher-play-btn" type="button">▶ ИГРАТЬ В САПЁР</button>
+        <div class="launcher-diff-error" id="launcher-diff-error"></div>
         <div id="diff-options" class="diff-options-grid"></div>
         <div class="depth-panel" id="depth-panel">
           <div class="depth-info">
@@ -1030,6 +1031,7 @@ let idleTriggered = false;
 let lastNarrationAt = 0;
 let escapeModalOpen = false;
 let selectedToolId = null;
+let _launcherSelectedDiff = null;
 let runToolInventory = {};
 let bgMusicStarted = false;
 let runPickaxeEffects = {};
@@ -1349,6 +1351,9 @@ function showStartScreen() {
   syncShopUnlockState();
   setActive(screenStart);
   diffOptions.innerHTML = "";
+  _launcherSelectedDiff = null;
+  const _diffErrEl = document.getElementById("launcher-diff-error");
+  if (_diffErrEl) _diffErrEl.textContent = "";
   screenStart.classList.toggle("shop-bg", hasShopUnlocked());
   updatePlayerIdentityUI();
 
@@ -1402,11 +1407,12 @@ function showStartScreen() {
       <span class="opt-desc">${f.hint}</span>
       <span class="opt-collapse">HP: ${d.startHp} · побег: ${keepPct}% · г${depthLevel}: +${oreBonusPct}% руды${dominantStr}</span>`;
     btn.addEventListener("click", () => {
-      if (hasProspectorsUnlocked()) {
-        openPreRaidModal(key);
-      } else {
-        startGame(key);
-      }
+      _launcherSelectedDiff = key;
+      document.querySelectorAll(".time-option").forEach((el) => {
+        el.classList.toggle("selected", el === btn);
+      });
+      const errEl = document.getElementById("launcher-diff-error");
+      if (errEl) errEl.textContent = "";
     });
     diffOptions.appendChild(btn);
   });
@@ -2577,6 +2583,27 @@ openTdBtn?.addEventListener("click", () => {
 openGachaBtn?.addEventListener("click", () => {
   if (!hasGachaUnlocked()) return;
   openGachaScreen();
+});
+document.getElementById("launcher-play-btn")?.addEventListener("click", () => {
+  if (!_launcherSelectedDiff) {
+    const errEl = document.getElementById("launcher-diff-error");
+    if (errEl) {
+      errEl.textContent = "Выберите сложность!";
+      setTimeout(() => { if (errEl) errEl.textContent = ""; }, 2500);
+    }
+    const grid = document.getElementById("diff-options");
+    if (grid) {
+      grid.classList.remove("shake");
+      void grid.offsetWidth;
+      grid.classList.add("shake");
+    }
+    return;
+  }
+  if (hasProspectorsUnlocked()) {
+    openPreRaidModal(_launcherSelectedDiff);
+  } else {
+    startGame(_launcherSelectedDiff);
+  }
 });
 openInventoryBtn?.addEventListener("click", () => {
   openInventoryScreen();
