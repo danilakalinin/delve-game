@@ -147,8 +147,16 @@ export function countUnstableNeighbors(grid, r, c) {
 
 // ─── СОСТОЯНИЕ ИГРЫ ───────────────────────────────────────────────────────────
 
-export function createGameState(diffKey) {
-  const diff = DIFFICULTIES[diffKey];
+export function createGameState(diffKey, diffOverrides = null) {
+  const baseDiff = DIFFICULTIES[diffKey];
+  const diff = {
+    ...baseDiff,
+    ...(diffOverrides ?? {}),
+    oreChances: {
+      ...baseDiff.oreChances,
+      ...(diffOverrides?.oreChances ?? {}),
+    },
+  };
   const grid = buildGrid(diff);
   openStartCells(grid);
   return {

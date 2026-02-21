@@ -133,6 +133,7 @@ const MUSIC_MUTED_KEY = "delve_music_muted";
 const SAVE_BACKUP_KEY = "delve_backup_v1";
 const RESET_STAMP_KEY = "delve_last_reset_at";
 const ESCAPE_STREAK_KEY = "delve_escape_streak_v1";
+const MINE_DEPTH_KEY = "delve_mine_depth_v1";
 let runtimePlayerName = "";
 let runtimePlayerGender = "male";
 
@@ -149,6 +150,8 @@ const CLEAR_BONUS_MULT = {
   normal: 0.25,
   hard: 0.45,
 };
+const MINE_DEPTH_MIN = 1;
+const MINE_DEPTH_MAX = 30;
 
 // Совместимость: total ore across all banks
 function getBank() {
@@ -160,6 +163,60 @@ function isUpgBought(id) {
 }
 function buyUpg(id) {
   localStorage.setItem(`delve_upg_${id}`, "1");
+}
+
+function getMineDepthLevel() {
+  const raw = parseInt(localStorage.getItem(MINE_DEPTH_KEY) ?? "1", 10);
+  if (Number.isNaN(raw)) return MINE_DEPTH_MIN;
+  return Math.max(MINE_DEPTH_MIN, Math.min(MINE_DEPTH_MAX, raw));
+}
+
+function setMineDepthLevel(level) {
+  const clamped = Math.max(MINE_DEPTH_MIN, Math.min(MINE_DEPTH_MAX, Math.floor(level)));
+  localStorage.setItem(MINE_DEPTH_KEY, String(clamped));
+}
+
+function getMineDepthUpgradeCost(level = getMineDepthLevel()) {
+  return Math.round(140 * Math.pow(1.3, Math.max(0, level - 1)));
+}
+
+function getMineDepthOreMultiplier(level = getMineDepthLevel()) {
+  return 1 + Math.min(1.2, (level - 1) * 0.06);
+}
+
+function getMineDepthUnstableBonus(level = getMineDepthLevel()) {
+  return Math.min(0.14, (level - 1) * 0.006);
+}
+
+function getMineDepthIdlePenaltySec(level = getMineDepthLevel()) {
+  return Math.min(25, Math.round((level - 1) * 1.2));
+}
+
+function scaleOreChanceMap(baseMap, mult, maxTotal) {
+  const baseTotal = Object.values(baseMap).reduce((sum, v) => sum + v, 0);
+  if (baseTotal <= 0) return { ...baseMap };
+  const targetTotal = Math.max(0.01, Math.min(baseTotal * mult, maxTotal));
+  const scale = targetTotal / baseTotal;
+  const out = {};
+  Object.entries(baseMap).forEach(([oreType, chance]) => {
+    out[oreType] = chance * scale;
+  });
+  return out;
+}
+
+function getDepthDifficultyOverrides(diffKey, depthLevel = getMineDepthLevel()) {
+  const base = DIFFICULTIES[diffKey];
+  if (!base) return {};
+  const oreMult = getMineDepthOreMultiplier(depthLevel);
+  const unstableBonus = getMineDepthUnstableBonus(depthLevel);
+  const nextUnstableChance = Math.min(0.85, base.unstableChance + unstableBonus);
+  const maxOreTotal = Math.max(0.02, 1 - nextUnstableChance - 0.02);
+  const idlePenalty = getMineDepthIdlePenaltySec(depthLevel);
+  return {
+    unstableChance: nextUnstableChance,
+    idleCollapseSec: Math.max(10, base.idleCollapseSec - idlePenalty),
+    oreChances: scaleOreChanceMap(base.oreChances, oreMult, maxOreTotal),
+  };
 }
 
 function resetProgress() {
@@ -182,6 +239,7 @@ function resetProgress() {
   resetShopReviews();
   localStorage.removeItem("delve_shop_open");
   localStorage.removeItem(ESCAPE_STREAK_KEY);
+  localStorage.removeItem(MINE_DEPTH_KEY);
   localStorage.removeItem(SAVE_BACKUP_KEY);
   localStorage.setItem(RESET_STAMP_KEY, new Date().toISOString());
 }
@@ -384,6 +442,12 @@ document.getElementById("app").innerHTML = `
         <div class="panel start-expedition-panel">
           <div class="panel-header"><span class="icon">🗺</span> ВЫБЕРИТЕ ВЫЛАЗКУ</div>
           <div id="diff-options"></div>
+          <div class="depth-panel" id="depth-panel">
+            <div class="depth-head">⛏ Глубина шахты: <strong id="depth-level">1</strong></div>
+            <div class="depth-sub" id="depth-effects">Бонус руды: +0% • Риск обвалов: +0%</div>
+            <div class="depth-sub" id="depth-idle">AFK-обвал: без штрафа</div>
+            <button class="btn-primary depth-upgrade-btn" id="depth-upgrade-btn">Углубить шахту</button>
+          </div>
         </div>
 
         <div class="panel upgrades-panel">
@@ -694,6 +758,11 @@ const screenInventory = document.getElementById("screen-inventory");
 const screenGame = document.getElementById("screen-game");
 const screenResult = document.getElementById("screen-result");
 const diffOptions = document.getElementById("diff-options");
+const depthPanel = document.getElementById("depth-panel");
+const depthLevelEl = document.getElementById("depth-level");
+const depthEffectsEl = document.getElementById("depth-effects");
+const depthIdleEl = document.getElementById("depth-idle");
+const depthUpgradeBtn = document.getElementById("depth-upgrade-btn");
 const upgradesGrid = document.getElementById("upgrades-grid");
 const goldDisplay = document.getElementById("gold-display");
 const statusGoldGroup = document.getElementById("status-gold-group");
@@ -806,7 +875,34 @@ function refreshStatusBar() {
   if (ticketDisplay && hasTdUnlocked()) {
     ticketDisplay.textContent = String(getTickets());
   }
+  renderDepthPanel();
   refreshEndgameButtons();
+}
+
+function renderDepthPanel() {
+  if (!depthPanel || !depthLevelEl || !depthEffectsEl || !depthIdleEl || !depthUpgradeBtn) {
+    return;
+  }
+  const depth = getMineDepthLevel();
+  const oreBonusPct = Math.round((getMineDepthOreMultiplier(depth) - 1) * 100);
+  const unstableBonusPct = Math.round(getMineDepthUnstableBonus(depth) * 100);
+  const idlePenaltySec = getMineDepthIdlePenaltySec(depth);
+  const atCap = depth >= MINE_DEPTH_MAX;
+  const nextCost = getMineDepthUpgradeCost(depth);
+  const gold = getGold();
+
+  depthLevelEl.textContent = String(depth);
+  depthEffectsEl.textContent = `Бонус руды: +${oreBonusPct}% • Риск обвалов: +${unstableBonusPct}%`;
+  depthIdleEl.textContent = idlePenaltySec > 0
+    ? `AFK-обвал быстрее на ${idlePenaltySec}с`
+    : "AFK-обвал: без штрафа";
+
+  depthUpgradeBtn.disabled = atCap || gold < nextCost;
+  if (atCap) {
+    depthUpgradeBtn.textContent = "Макс. глубина достигнута";
+  } else {
+    depthUpgradeBtn.textContent = `Углубить за ${nextCost} монет`;
+  }
 }
 
 // ─── СОСТОЯНИЕ ────────────────────────────────────────────────────────────────
@@ -1028,6 +1124,9 @@ function showStartScreen() {
       mood: "🔴",
     },
   };
+  const depthLevel = getMineDepthLevel();
+  const oreBonusPct = Math.round((getMineDepthOreMultiplier(depthLevel) - 1) * 100);
+  const unstableBonusPct = Math.round(getMineDepthUnstableBonus(depthLevel) * 100);
 
   Object.entries(DIFFICULTIES).forEach(([key, d]) => {
     const btn = document.createElement("button");
@@ -1037,7 +1136,7 @@ function showStartScreen() {
     btn.innerHTML = `
       <span class="opt-dur">${f.mood} ${d.label}</span>
       <span class="opt-desc">${f.hint}</span>
-      <span class="opt-collapse">HP: ${d.startHp} · при побеге базово сохраняешь ${keepPct}% руды</span>`;
+      <span class="opt-collapse">HP: ${d.startHp} · побег: ${keepPct}% · глубина ${depthLevel}: +${oreBonusPct}% руды / +${unstableBonusPct}% риска</span>`;
     btn.addEventListener("click", () => startGame(key));
     diffOptions.appendChild(btn);
   });
@@ -1253,7 +1352,10 @@ resetCancel.addEventListener("click", () => {
 // ─── СТАРТ ВЫЛАЗКИ ────────────────────────────────────────────────────────────
 
 function startGame(diffKey) {
-  state = createGameState(diffKey);
+  const depthLevel = getMineDepthLevel();
+  const depthOverrides = getDepthDifficultyOverrides(diffKey, depthLevel);
+  state = createGameState(diffKey, depthOverrides);
+  state.depthLevel = depthLevel;
   runPickaxeEffects = getEquippedPickaxeEffects();
   runSecondWindUsed = false;
   mobileFlagMode = false;
@@ -1343,7 +1445,7 @@ function updateHUD() {
   hudOreEl.textContent = state.ore;
   hudBankEl.textContent = getBank();
   hudTimerEl.textContent = formatTime(state.elapsedSeconds);
-  hudDiffEl.textContent = state.diff.label.toUpperCase();
+  hudDiffEl.textContent = `${state.diff.label.toUpperCase()} • ГЛУБ.${state.depthLevel ?? 1}`;
   hudDiffEl.className = "hud-diff-val diff-" + state.diffKey;
   if (collectOreBtn) {
     const availableOre = countRevealedOre();
@@ -2033,6 +2135,7 @@ function showResult() {
       cls: reason === "death" ? "red" : "green",
     },
     { label: "Прошло времени", val: formatTime(elapsed), cls: "blue" },
+    { label: "Глубина шахты", val: `Уровень ${state.depthLevel ?? 1}`, cls: "gold-dim" },
   ];
 
   resultRows.innerHTML = rows
@@ -2218,6 +2321,15 @@ openGachaBtn?.addEventListener("click", () => {
 });
 openInventoryBtn?.addEventListener("click", () => {
   openInventoryScreen();
+});
+depthUpgradeBtn?.addEventListener("click", () => {
+  const depth = getMineDepthLevel();
+  if (depth >= MINE_DEPTH_MAX) return;
+  const cost = getMineDepthUpgradeCost(depth);
+  if (!spendGold(cost)) return;
+  setMineDepthLevel(depth + 1);
+  refreshStatusBar();
+  showStartScreen();
 });
 
 // ─── УТИЛИТЫ ──────────────────────────────────────────────────────────────────

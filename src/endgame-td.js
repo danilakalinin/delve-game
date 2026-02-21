@@ -165,6 +165,16 @@ function ticketsForWave(wave) {
   return 1 + Math.floor(wave / 4);
 }
 
+function waveStartCost(wave) {
+  return Math.round(70 + wave * 55 + wave * wave * 8);
+}
+
+function getTowerBuildCost(type) {
+  const wavePressure = 1 + Math.max(0, state.wave) * 0.11;
+  const densityPressure = 1 + Math.max(0, state.towers.length - 3) * 0.06;
+  return Math.round(type.cost * wavePressure * densityPressure);
+}
+
 function pushMessage(line, tone = "neutral") {
   const ts = Date.now();
   state.messages.unshift({ line, tone, ts });
@@ -222,7 +232,9 @@ function spawnEnemy() {
 
 function getTowerUpgradeCost(tower) {
   const type = TOWER_TYPES[tower.typeId];
-  return Math.round(type.cost * (0.75 + tower.level * 0.65));
+  const levelPressure = 0.8 + tower.level * 0.78;
+  const wavePressure = 1 + Math.max(0, state.wave) * 0.09;
+  return Math.round(type.cost * levelPressure * wavePressure);
 }
 
 function getTowerLevelStats(type, level = 1) {
@@ -283,12 +295,19 @@ function startNextWave() {
     return;
   }
   if (state.waveActive) return;
+  const nextWave = state.wave + 1;
+  const startCost = waveStartCost(nextWave);
+  if (!canSpendGold(startCost)) {
+    pushMessage(`Не хватает золота для старта волны ${nextWave}: нужно ${startCost}.`, "bad");
+    return;
+  }
   state.wave += 1;
   state.waveActive = true;
   state.spawnQueue = waveEnemyCount(state.wave);
   state.spawnCd = 0;
   state.waveTickets = ticketsForWave(state.wave);
-  pushMessage(`Волна ${state.wave}: врагов ${state.spawnQueue}`, "good");
+  pushMessage(`Волна ${state.wave}: врагов ${state.spawnQueue} • вход ${startCost} золота`, "good");
+  notifyStateChanged();
   renderHud();
 }
 
@@ -399,13 +418,14 @@ function handleCanvasClick(x, y) {
   const tower = getTowerAt(x, y);
   if (!tower) {
     const type = TOWER_TYPES[state.selectedTowerId];
+    const buildCost = type ? getTowerBuildCost(type) : 0;
     if (!type) return;
     if (!canPlaceTowerAt(x, y)) {
       pushMessage("Слишком близко к краю или другой башне. Выбери свободное место.", "bad");
       return;
     }
-    if (!canSpendGold(type.cost)) {
-      pushMessage(`Не хватает золота: нужно ${type.cost}.`, "bad");
+    if (!canSpendGold(buildCost)) {
+      pushMessage(`Не хватает золота: нужно ${buildCost}.`, "bad");
       return;
     }
     state.towers.push({
@@ -415,7 +435,7 @@ function handleCanvasClick(x, y) {
       level: 1,
       cooldownLeft: 0,
     });
-    pushMessage(`${type.label} построена за ${type.cost} золота.`, "neutral");
+    pushMessage(`${type.label} построена за ${buildCost} золота.`, "neutral");
     notifyStateChanged();
     renderHud();
     return;
@@ -672,6 +692,11 @@ function renderHud() {
   const selectedSpecialEl = document.getElementById("td-selected-special");
   const slotInfoEl = document.getElementById("td-slots-info");
   const buffsLineEl = document.getElementById("td-buffs-line");
+  const nextWaveFeeEl = document.getElementById("td-next-wave-fee");
+  const boltCostEl = document.getElementById("td-cost-bolt");
+  const cannonCostEl = document.getElementById("td-cost-cannon");
+  const frostCostEl = document.getElementById("td-cost-frost");
+  const startWaveBtn = document.getElementById("td-start-wave");
 
   if (waveEl) waveEl.textContent = String(state.wave);
   if (hpEl) hpEl.textContent = String(state.baseHp);
@@ -679,6 +704,9 @@ function renderHud() {
   if (ticketsEl) ticketsEl.textContent = String(getTickets());
   if (queueEl) queueEl.textContent = String(state.spawnQueue + state.enemies.length);
   if (runEl) runEl.textContent = String(state.totalTicketsSession);
+  const nextCost = waveStartCost(state.wave + 1);
+  if (nextWaveFeeEl) nextWaveFeeEl.textContent = `${nextCost} золота`;
+  if (startWaveBtn) startWaveBtn.textContent = `Старт волны (−${nextCost})`;
 
   if (logEl) {
     logEl.innerHTML = state.messages
@@ -689,19 +717,23 @@ function renderHud() {
   const selectedText = document.getElementById("td-selected-tower");
   if (selectedText) {
     const type = TOWER_TYPES[state.selectedTowerId];
-    selectedText.textContent = type ? `${type.label} (${type.cost} золота)` : "—";
+    selectedText.textContent = type ? `${type.label} (${getTowerBuildCost(type)} золота)` : "—";
   }
 
   const selectedType = TOWER_TYPES[state.selectedTowerId];
   if (selectedType) {
     const stats = getTowerLevelStats(selectedType, 1);
+    const buildCost = getTowerBuildCost(selectedType);
     if (selectedNameEl) selectedNameEl.textContent = selectedType.label;
-    if (selectedCostEl) selectedCostEl.textContent = `${selectedType.cost} золота`;
+    if (selectedCostEl) selectedCostEl.textContent = `${buildCost} золота`;
     if (selectedDamageEl) selectedDamageEl.textContent = `${stats.damage}`;
     if (selectedRangeEl) selectedRangeEl.textContent = `${stats.range}px`;
     if (selectedCdEl) selectedCdEl.textContent = `${stats.cooldown.toFixed(2)}с`;
     if (selectedSpecialEl) selectedSpecialEl.textContent = stats.special;
   }
+  if (boltCostEl) boltCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.bolt)} золота`;
+  if (cannonCostEl) cannonCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.cannon)} золота`;
+  if (frostCostEl) frostCostEl.textContent = `${getTowerBuildCost(TOWER_TYPES.frost)} золота`;
 
   if (slotInfoEl) {
     const built = state.towers.length;
@@ -834,21 +866,22 @@ export function buildTdScreen() {
           <div class="td-controls">
             <div class="td-control-block">
               <div class="td-sub" id="td-buffs-line">Бонусы серии: нет</div>
+              <div class="td-sub">Вход в следующую волну: <strong id="td-next-wave-fee">133 золота</strong></div>
             </div>
             <div class="td-control-block">
               <div class="td-title">Башни (тратят только золото)</div>
               <div class="td-btn-row td-tower-grid">
                 <button class="btn-primary td-tower-card active" data-td-tower="bolt">
                   <span class="td-tower-name">Болтовая</span>
-                  <span class="td-tower-meta">90 золота • Быстрая single-target</span>
+                  <span class="td-tower-meta"><span id="td-cost-bolt">90 золота</span> • Быстрая single-target</span>
                 </button>
                 <button class="btn-primary td-tower-card" data-td-tower="cannon">
                   <span class="td-tower-name">Пушка</span>
-                  <span class="td-tower-meta">160 золота • Урон по области</span>
+                  <span class="td-tower-meta"><span id="td-cost-cannon">160 золота</span> • Урон по области</span>
                 </button>
                 <button class="btn-primary td-tower-card" data-td-tower="frost">
                   <span class="td-tower-name">Мороз</span>
-                  <span class="td-tower-meta">145 золота • Замедление + урон</span>
+                  <span class="td-tower-meta"><span id="td-cost-frost">145 золота</span> • Замедление + урон</span>
                 </button>
               </div>
               <div class="td-sub">Выбрано: <span id="td-selected-tower">Болтовая (90 золота)</span></div>
