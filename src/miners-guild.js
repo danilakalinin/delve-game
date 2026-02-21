@@ -655,6 +655,54 @@ function moodEmoji(mood) {
   return "😟";
 }
 
+/* ─── THOUGHT BUBBLES ──────────────────────────────────────────── */
+
+const THOUGHTS_GOOD = [
+  "Отличная смена! 💪", "Руда так и прёт!", "Люблю эту работу!",
+  "Зарплата — огонь!", "Ещё пару рейсов!", "Хороший денёк ☀️",
+  "Красота! ✨", "Шахта — мой дом!",
+];
+const THOUGHTS_OK = [
+  "Работаем…", "Нормальный денёк", "Бывало и лучше…",
+  "Ещё чуть-чуть…", "Рутина 🔄", "Когда перерыв?",
+  "Ладно, копаем", "Сойдёт…",
+];
+const THOUGHTS_BAD = [
+  "Мало платят… 😤", "Надоело тут", "Может уволиться?",
+  "Тоска… 😒", "Опасно тут 😰", "Хочу в другую шахту",
+  "Зачем я здесь…", "Скучаю по дому",
+];
+
+function getMinerThought(miner) {
+  const mood = Math.round(miner.mood);
+  const pool = mood >= 65 ? THOUGHTS_GOOD : mood >= 40 ? THOUGHTS_OK : THOUGHTS_BAD;
+  const tick = Math.floor(Date.now() / 8000);
+  return pool[(miner.id + tick) % pool.length];
+}
+
+/* ─── AUTO-REFRESH ─────────────────────────────────────────────── */
+
+let _guildRefreshTimer = null;
+
+function startGuildAutoRefresh() {
+  stopGuildAutoRefresh();
+  _guildRefreshTimer = setInterval(() => {
+    const screen = document.getElementById("screen-guild");
+    if (!screen || screen.style.display === "none") {
+      stopGuildAutoRefresh();
+      return;
+    }
+    renderMinersGuildScreen();
+  }, 3000);
+}
+
+function stopGuildAutoRefresh() {
+  if (_guildRefreshTimer) {
+    clearInterval(_guildRefreshTimer);
+    _guildRefreshTimer = null;
+  }
+}
+
 function renderGuildStats(state) {
   const nameEl    = document.getElementById("guild-name");
   const silverEl  = document.getElementById("guild-silver");
@@ -745,6 +793,9 @@ function renderGuildMiners(state) {
       const yieldRange  = getMinerYieldRange(m, state);
       const mood = Math.round(m.mood);
       const mc = moodClass(mood);
+      const progress = clamp(Math.round((1 - m.cooldown / Math.max(1, runSec)) * 100), 0, 100);
+      const thought = getMinerThought(m);
+      const animDelay = -(m.id * 2.7 % 8).toFixed(1);
 
       const trainDisSpeed  = m.stats.speed  >= 8 || silver < costSpeed;
       const trainDisSafety = m.stats.safety >= 8 || silver < costSafety;
@@ -753,10 +804,18 @@ function renderGuildMiners(state) {
       return `
       <div class="guild-miner-card">
         <div class="guild-miner-header">
-          <span class="guild-miner-name">👷 ${m.name}</span>
+          <span class="guild-miner-name"><span class="guild-miner-pick">⛏</span> ${m.name}</span>
           <div class="guild-miner-chips">
-            <span class="guild-eta-chip" title="До конца рейса">⏱ ${fmtTime(m.cooldown)}</span>
             <span class="guild-mood-chip ${mc}" title="Настроение влияет на скорость, риск и добычу">${moodEmoji(mood)} ${mood}%</span>
+          </div>
+        </div>
+        <div class="guild-miner-scene">
+          <div class="guild-thought ${mc}" style="animation-delay:${animDelay}s">💭 ${thought}</div>
+          <div class="guild-run-row">
+            <div class="guild-run-bar" title="Прогресс рейса: ${progress}%">
+              <div class="guild-run-bar-fill ${mc}" style="width:${progress}%"></div>
+            </div>
+            <span class="guild-run-eta">⏱ ${fmtTime(m.cooldown)}</span>
           </div>
         </div>
         <div class="guild-stat-pills">
@@ -779,15 +838,15 @@ function renderGuildMiners(state) {
             <div class="guild-train-btns">
               <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="speed" ${trainDisSpeed ? "disabled" : ""}>
                 <span class="guild-train-stat">⚡ Скорость</span>
-                <span class="guild-train-sub">${m.stats.speed >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.speed}→${m.stats.speed + 1} · ${costSpeed} мн`}</span>
+                <span class="guild-train-sub">${m.stats.speed >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.speed}→${m.stats.speed + 1} · ${costSpeed} 🪙`}</span>
               </button>
               <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="safety" ${trainDisSafety ? "disabled" : ""}>
                 <span class="guild-train-stat">🛡 Безопасность</span>
-                <span class="guild-train-sub">${m.stats.safety >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.safety}→${m.stats.safety + 1} · ${costSafety} мн`}</span>
+                <span class="guild-train-sub">${m.stats.safety >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.safety}→${m.stats.safety + 1} · ${costSafety} 🪙`}</span>
               </button>
               <button class="guild-train-btn" data-train-miner="${m.id}" data-train-stat="yield" ${trainDisYield ? "disabled" : ""}>
                 <span class="guild-train-stat">⛏ Добыча</span>
-                <span class="guild-train-sub">${m.stats.yield >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.yield}→${m.stats.yield + 1} · ${costYield} мн`}</span>
+                <span class="guild-train-sub">${m.stats.yield >= 8 ? "МАКСИМУМ" : `Ур. ${m.stats.yield}→${m.stats.yield + 1} · ${costYield} 🪙`}</span>
               </button>
             </div>
           </div>
@@ -1063,7 +1122,7 @@ export function initMinersGuildScreen({
   onSpendSilver,
   onRequestRename,
 }) {
-  _onBack = onBack;
+  _onBack = () => { stopGuildAutoRefresh(); onBack?.(); };
   _getSilver = getSilver;
   _spendSilver = spendSilver;
   _onStateChanged = onStateChanged;
@@ -1072,4 +1131,5 @@ export function initMinersGuildScreen({
 
   bindGuildHandlers();
   renderMinersGuildScreen();
+  startGuildAutoRefresh();
 }

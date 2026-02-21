@@ -1414,15 +1414,6 @@ html, body {
   flex-shrink: 0;
 }
 
-.guild-eta-chip {
-  font-size: 11px;
-  color: var(--text-dim, #9a8a7a);
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 2px 8px;
-}
-
 .guild-mood-chip {
   font-size: 11px;
   border-radius: 20px;
@@ -1433,6 +1424,78 @@ html, body {
 .guild-mood-chip.good { color: #6ee7a0; background: rgba(110,231,160,0.09); border-color: rgba(110,231,160,0.2); }
 .guild-mood-chip.ok   { color: #fbbf24; background: rgba(251,191,36,0.09);  border-color: rgba(251,191,36,0.2); }
 .guild-mood-chip.bad  { color: #f87171; background: rgba(248,113,113,0.09); border-color: rgba(248,113,113,0.2); }
+
+/* ─── MINER PICK ANIMATION ─────────────────────────────────── */
+
+.guild-miner-pick {
+  display: inline-block;
+  animation: guild-pick-swing 1.6s ease-in-out infinite;
+  transform-origin: 70% 70%;
+}
+
+@keyframes guild-pick-swing {
+  0%, 100% { transform: rotate(0deg); }
+  30%      { transform: rotate(-14deg); }
+  60%      { transform: rotate(6deg); }
+}
+
+/* ─── MINER SCENE (thought + progress) ─────────────────────── */
+
+.guild-miner-scene {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guild-thought {
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  animation: guild-thought-pulse 8s ease-in-out infinite;
+}
+.guild-thought.good { color: rgba(110,231,160,0.75); }
+.guild-thought.ok   { color: rgba(251,191,36,0.65); }
+.guild-thought.bad  { color: rgba(248,113,113,0.7); }
+
+@keyframes guild-thought-pulse {
+  0%, 100% { opacity: 0.55; }
+  20%, 80% { opacity: 1; }
+}
+
+.guild-run-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guild-run-bar {
+  flex: 1;
+  height: 5px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.guild-run-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+.guild-run-bar-fill.good { background: linear-gradient(90deg, #22c55e, #6ee7a0); box-shadow: 0 0 6px rgba(110,231,160,0.3); }
+.guild-run-bar-fill.ok   { background: linear-gradient(90deg, #f59e0b, #fbbf24); box-shadow: 0 0 6px rgba(251,191,36,0.3); }
+.guild-run-bar-fill.bad  { background: linear-gradient(90deg, #ef4444, #f87171); box-shadow: 0 0 6px rgba(248,113,113,0.3); }
+
+.guild-run-eta {
+  font-size: 11px;
+  color: var(--text-dim, #9a8a7a);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: right;
+}
 
 /* ─── STAT PILLS (shared: miners + candidates) ──────────────── */
 
