@@ -195,6 +195,7 @@ export const PICKAXES = [
 ];
 
 let onStateChanged = null;
+let onRollsCompletedCb = null;
 let rolling = false;
 
 function emitStateChanged() {
@@ -667,8 +668,9 @@ export function buildInventoryScreen() {
   </div>`;
 }
 
-export function initGachaScreen({ onBack, onStateChanged: onState }) {
+export function initGachaScreen({ onBack, onStateChanged: onState, onRollsCompleted }) {
   onStateChanged = onState;
+  onRollsCompletedCb = onRollsCompleted ?? null;
   const back = document.getElementById("gacha-back");
   const roll1 = document.getElementById("gacha-roll-1");
   const roll5 = document.getElementById("gacha-roll-5");
@@ -734,6 +736,7 @@ export function initGachaScreen({ onBack, onStateChanged: onState }) {
     renderGachaScreen();
     renderInventoryScreen();
     emitStateChanged();
+    if (got.length > 0 && typeof onRollsCompletedCb === "function") onRollsCompletedCb(got.length);
     setRollButtonsDisabled(false);
     rolling = false;
   };

@@ -128,6 +128,12 @@ import {
   initForgeScreen,
   renderForgeScreen,
 } from "./forge-ui.js";
+import {
+  renderDailyCard,
+  initDailyCard,
+  trackDailyProgress,
+  resetDailies,
+} from "./dailies.js";
 
 // ─── МЕТА-ПРОГРЕССИЯ ──────────────────────────────────────────────────────────
 
@@ -276,6 +282,7 @@ function resetProgress() {
   resetCaravans();
   resetTd();
   resetGacha();
+  resetDailies();
   resetProspectorsClub();
   resetMinersGuild();
   resetShopReviews();
@@ -370,6 +377,7 @@ function getDelveStorageSnapshot() {
     "delve_gacha_pity_v1",
     "delve_pickaxe_shards_v1",
     "delve_pickaxe_levels_v1",
+    "delve_dailies_v1",
   ]);
   const out = {};
   for (let i = 0; i < localStorage.length; i += 1) {
@@ -561,6 +569,9 @@ document.getElementById("app").innerHTML = `
               <div class="stats-content" id="stats-content"></div>
             </div>
           </div>
+
+          <!-- Дейлики -->
+          <div id="daily-card-mount"></div>
 
           <!-- Справка -->
           <div class="card help-card" id="help-panel" style="display:none;">
@@ -1153,6 +1164,7 @@ function grantRunOre(oreType, baseAmount = 1) {
     }
   }
   state.ores[t] = (state.ores[t] ?? 0) + granted;
+  trackDailyProgress("ore_mine", granted);
   return granted;
 }
 
@@ -1316,6 +1328,7 @@ function showStartScreen() {
   refreshStatusBar();
   refreshShopButtonState();
   refreshEndgameButtons();
+  renderDailyCard();
 
   const DIFF_FLAVOR = {
     easy: { hint: "Меньше руды, меньше угроз. Обвалы небольшие.", mood: "🟢" },
@@ -1795,6 +1808,7 @@ function useInstantTool(toolId) {
     applyToolGridChanges([], 0, 1);
     setRunToolHint("🩹 Аптечка применена: +1 HP.");
     updateStats((s) => addXp(s, withRunXp(1)));
+    trackDailyProgress("consumable", 1);
     return true;
   }
 
@@ -1806,6 +1820,7 @@ function useInstantTool(toolId) {
     if (!consumeRunTool(toolId)) return false;
     runShieldActive = true;
     setRunToolHint("🛡 Щит активирован: следующий удар по нестабильной клетке не нанесёт урона.");
+    trackDailyProgress("consumable", 1);
     return true;
   }
 
@@ -1814,6 +1829,7 @@ function useInstantTool(toolId) {
     state.lastActionTime = Date.now();
     idleTriggered = false;
     setRunToolHint("☕ Таймер AFK-обвала сброшен. Время пошло заново.");
+    trackDailyProgress("consumable", 1);
     return true;
   }
 
@@ -2301,6 +2317,9 @@ function showResult() {
         s.achievements.problems5CollapsesRun = true;
     });
     state.statsRecorded = true;
+    trackDailyProgress("run_any", 1);
+    if (reason === "clear")  trackDailyProgress("run_clear", 1);
+    if (reason === "escape") trackDailyProgress("run_escape", 1);
   }
 
   const titles = {
@@ -2978,6 +2997,8 @@ function showShopToast({ oreType, oreBought, goldEarned }) {
     addXp(s, 1);
     addXp(s, Math.floor(oreBought / 20));
   });
+  trackDailyProgress("ore_sell", oreBought);
+  trackDailyProgress("gold_earn", goldEarned);
   addShopReviewFromContext({
     totalOreSold: stats.resources.totalOreSold,
     totalSilverEarned: stats.resources.totalGoldEarned,
@@ -3126,6 +3147,10 @@ safeInit("td-ui", () =>
       renderStatsPanel();
       renderUpgrades();
     },
+    onWaveCleared: () => {
+      trackDailyProgress("td_wave", 1);
+      renderDailyCard();
+    },
   }),
 );
 safeInit("gacha-ui", () =>
@@ -3136,6 +3161,10 @@ safeInit("gacha-ui", () =>
       renderStatsPanel();
       renderUpgrades();
       if (screenInventory.classList.contains("active")) renderInventoryScreen();
+    },
+    onRollsCompleted: (count) => {
+      trackDailyProgress("gacha_pull", count);
+      renderDailyCard();
     },
   }),
 );
@@ -3156,6 +3185,10 @@ safeInit("forge-ui", () =>
     },
   }),
 );
+initDailyCard({
+  onClaimQuest: () => refreshStatusBar(),
+  onClaimBonus: () => refreshStatusBar(),
+});
 setShopSaleListener(showShopToast);
 setAdPurchaseListener((cost) => {
   updateStats((s) => {

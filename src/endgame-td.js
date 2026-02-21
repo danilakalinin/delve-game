@@ -133,6 +133,7 @@ let getGoldCb = null;
 let addTicketsCb = null;
 let getTicketsCb = null;
 let onStateChangedCb = null;
+let onWaveClearedCb = null;
 let toastTimer = null;
 
 function notifyStateChanged() {
@@ -321,6 +322,7 @@ function finishWave() {
     pushMessage(`Волна ${state.wave} очищена: +${ticketReward} билет(ов).`, "good");
     notifyStateChanged();
   }
+  if (typeof onWaveClearedCb === "function") onWaveClearedCb(state.wave);
   state.pendingChoices = pickUpgradeChoices();
   showUpgradeChoicePanel();
   renderHud();
@@ -925,6 +927,7 @@ export function initTdScreen({
   addTickets,
   getTickets,
   onStateChanged,
+  onWaveCleared,
 }) {
   onBackCb = onBack;
   spendGoldCb = spendGold;
@@ -932,6 +935,7 @@ export function initTdScreen({
   addTicketsCb = addTickets;
   getTicketsCb = getTickets;
   onStateChangedCb = onStateChanged;
+  onWaveClearedCb = onWaveCleared ?? null;
   if (!state.mounted) {
     bindUi();
     state.mounted = true;
