@@ -4040,6 +4040,110 @@ body {
   }
 }
 
+/* ─── CELL REVEAL POP (staggered cascade) ─────────────────── */
+@keyframes cell-reveal {
+  0%   { transform: scale(0.72); opacity: 0.3; }
+  55%  { transform: scale(1.07); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+.cell.reveal-anim {
+  animation: cell-reveal 0.2s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation-delay: var(--anim-delay, 0ms);
+}
+
+/* ─── FLAG ANIMATIONS ─────────────────────────────────────── */
+@keyframes flag-pop {
+  0%   { transform: scale(0.3) rotate(-15deg); }
+  55%  { transform: scale(1.22) rotate(6deg); }
+  80%  { transform: scale(0.92) rotate(-2deg); }
+  100% { transform: scale(1)    rotate(0); }
+}
+
+@keyframes flag-remove {
+  0%   { transform: scale(1) rotate(0);    opacity: 1; }
+  40%  { transform: scale(1.1) rotate(8deg); opacity: 0.7; }
+  100% { transform: scale(0.2) rotate(25deg); opacity: 0; }
+}
+
+.cell.flag-pop-anim {
+  animation: flag-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cell.flag-remove-anim {
+  animation: flag-remove 0.2s ease-in;
+}
+
+/* ─── ORE ICON ENTRANCE ───────────────────────────────────── */
+@keyframes ore-entrance {
+  0%   { transform: scale(0.1) rotate(-18deg); opacity: 0; }
+  60%  { transform: scale(1.2)  rotate(5deg);  opacity: 1; }
+  100% { transform: scale(1)    rotate(0);     opacity: 1; }
+}
+
+.cell.ore-revealed .cell-ore-icon {
+  animation: ore-entrance 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ─── FLOATING ORE PARTICLE ──────────────────────────────── */
+@keyframes ore-float {
+  0%   { transform: translateY(0)     scale(1);   opacity: 1; }
+  70%  { transform: translateY(-28px) scale(1.1); opacity: 0.9; }
+  100% { transform: translateY(-52px) scale(0.7); opacity: 0; }
+}
+
+.ore-particle {
+  position: absolute;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 200;
+  animation: ore-float 0.75s ease-out forwards;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 8px currentColor;
+  white-space: nowrap;
+  transform-origin: center bottom;
+}
+
+/* ─── GRID SHAKE (on collapse) ───────────────────────────── */
+@keyframes grid-shake {
+  0%,  100% { transform: translateX(0); }
+  15%       { transform: translateX(-6px) rotate(-0.4deg); }
+  30%       { transform: translateX( 6px) rotate( 0.4deg); }
+  45%       { transform: translateX(-4px); }
+  60%       { transform: translateX( 4px); }
+  78%       { transform: translateX(-2px); }
+  90%       { transform: translateX( 2px); }
+}
+
+#grid.grid-shake {
+  animation: grid-shake 0.48s ease-in-out;
+}
+
+/* ─── VICTORY WAVE ───────────────────────────────────────── */
+@keyframes victory-wave {
+  0%   { filter: brightness(1)   saturate(1);   transform: scale(1); }
+  40%  { filter: brightness(2.2) saturate(2);   transform: scale(1.08); }
+  100% { filter: brightness(1)   saturate(1);   transform: scale(1); }
+}
+
+.cell.victory-wave {
+  animation: victory-wave 0.45s ease-out both;
+  animation-delay: var(--anim-delay, 0ms);
+}
+
+/* ─── CELL HOVER (unrevealed only) ──────────────────────── */
+.cell:not(.open):not(.ore-revealed):not(.flagged):hover {
+  background: linear-gradient(160deg, #263a4e 0%, #2e4560 100%);
+  border-color: rgba(100, 180, 255, 0.18);
+  transform: scale(1.06);
+  z-index: 1;
+  transition:
+    background 0.08s,
+    border-color 0.08s,
+    transform 0.1s;
+}
+
 @media (max-width: 1100px) {
   .game-main-layout {
     flex-direction: column;

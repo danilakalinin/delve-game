@@ -60,6 +60,7 @@ import {
   ORE_GOLD,
   ORE_DIAMOND,
   ORE_CONFIG,
+  GRID_SIZE,
 } from "./game.js";
 import { LINES } from "./narrator-lines.js";
 import {
@@ -1782,7 +1783,7 @@ function setMinerPosition(r, c, instant = false) {
 }
 
 function animateCell(r, c, cls) {
-  const idx = r * 15 + c;
+  const idx = r * GRID_SIZE + c;
   const el = gridEl.children[idx];
   if (!el) return;
   el.classList.remove(cls);
@@ -1790,6 +1791,68 @@ function animateCell(r, c, cls) {
   el.classList.add(cls);
   el.addEventListener("animationend", () => el.classList.remove(cls), {
     once: true,
+  });
+}
+
+function animateCellDelayed(r, c, cls, delayMs) {
+  const idx = r * GRID_SIZE + c;
+  const el = gridEl.children[idx];
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.style.setProperty("--anim-delay", `${delayMs}ms`);
+  el.classList.add(cls);
+  el.addEventListener("animationend", () => {
+    el.classList.remove(cls);
+    el.style.removeProperty("--anim-delay");
+  }, { once: true });
+}
+
+const ORE_PARTICLE_COLORS = {
+  [ORE_COPPER]: "#e8915a",
+  [ORE_SILVER]: "#c8d8f0",
+  [ORE_GOLD]:   "#f0d060",
+  [ORE_DIAMOND]: "#60eeff",
+};
+
+function spawnOreParticle(r, c, oreType) {
+  const idx = r * GRID_SIZE + c;
+  const cellEl = gridEl.children[idx];
+  if (!cellEl) return;
+  const container = gridEl.parentElement; // #grid-wrapper (position:relative)
+  if (!container) return;
+  const cellRect = cellEl.getBoundingClientRect();
+  const wrapRect = container.getBoundingClientRect();
+  const p = document.createElement("div");
+  p.className = "ore-particle";
+  p.textContent = "+1";
+  p.style.left  = `${cellRect.left - wrapRect.left + cellRect.width * 0.5}px`;
+  p.style.top   = `${cellRect.top  - wrapRect.top}px`;
+  p.style.color = ORE_PARTICLE_COLORS[oreType] ?? "#fff";
+  container.appendChild(p);
+  p.addEventListener("animationend", () => p.remove(), { once: true });
+}
+
+function shakeGrid() {
+  gridEl.classList.remove("grid-shake");
+  void gridEl.offsetWidth;
+  gridEl.classList.add("grid-shake");
+  gridEl.addEventListener("animationend", () => gridEl.classList.remove("grid-shake"), { once: true });
+}
+
+function triggerVictoryWave() {
+  Array.from(gridEl.children).forEach((el, i) => {
+    const row = Math.floor(i / GRID_SIZE);
+    const col = i % GRID_SIZE;
+    const delay = (row + col) * 28;
+    el.classList.remove("victory-wave");
+    void el.offsetWidth;
+    el.style.setProperty("--anim-delay", `${delay}ms`);
+    el.classList.add("victory-wave");
+    el.addEventListener("animationend", () => {
+      el.classList.remove("victory-wave");
+      el.style.removeProperty("--anim-delay");
+    }, { once: true });
   });
 }
 
@@ -1986,6 +2049,7 @@ function checkIdle() {
     if (collapsed.length > 0) {
       updateCells(state.grid, gridEl, collapsed);
       flashCollapse(state.grid, gridEl, collapsed);
+      shakeGrid();
       const newHidden = collapsed.filter(
         ({ r, c }) => state.grid[r][c].state === "hidden",
       );
@@ -2041,6 +2105,7 @@ gridEl.addEventListener("click", (e) => {
     const toggled = toggleFlag(state, clickR, clickC);
     if (toggled) {
       updateCells(state.grid, gridEl, [toggled]);
+      animateCell(toggled.r, toggled.c, wasFlagged ? "flag-remove-anim" : "flag-pop-anim");
       updateStats((s) => {
         if (wasFlagged) s.cells.flagsRemoved += 1;
         else {
@@ -2094,6 +2159,15 @@ gridEl.addEventListener("click", (e) => {
 
   updateCells(state.grid, gridEl, result.changed);
 
+  // ── Stagger-reveal animation for newly opened cells ──────────────────────
+  result.changed.forEach(({ r, c }, i) => {
+    const idx = r * GRID_SIZE + c;
+    const el = gridEl.children[idx];
+    if (el && (el.classList.contains("open") || el.classList.contains("ore-revealed"))) {
+      animateCellDelayed(r, c, "reveal-anim", Math.min(i * 16, 320));
+    }
+  });
+
   updateStats((s) => {
     s.cells.openedTotal += newlyOpened;
     s.cells.emptyFound += emptyOpened;
@@ -2123,6 +2197,7 @@ gridEl.addEventListener("click", (e) => {
     // result.hitCollapse содержит как обрушенные, так и соседей для обновления чисел
     updateCells(state.grid, gridEl, result.hitCollapse);
     flashCollapse(state.grid, gridEl, result.hitCollapse);
+    shakeGrid();
     // Показываем только число реально обрушенных (те что стали hidden)
     const newHidden = result.hitCollapse.filter(
       ({ r, c }) => state.grid[r][c].state === "hidden",
@@ -2149,6 +2224,7 @@ gridEl.addEventListener("click", (e) => {
   } else if (gained > 0) {
     animateMiner("pickup");
     animateCell(clickR, clickC, "pickup-anim");
+    spawnOreParticle(clickR, clickC, result.collectedOreType ?? ORE_COPPER);
     narrate("ore");
   } else {
     animateMiner("mining");
@@ -2176,6 +2252,7 @@ gridEl.addEventListener("click", (e) => {
     return;
   }
   if (checkVictory(state)) {
+    triggerVictoryWave();
     narrate("clear");
     endGame("clear");
     return;
@@ -2194,6 +2271,7 @@ gridEl.addEventListener("contextmenu", (e) => {
   const r = toggleFlag(state, rr, cc);
   if (r) {
     updateCells(state.grid, gridEl, [r]);
+    animateCell(r.r, r.c, wasFlagged ? "flag-remove-anim" : "flag-pop-anim");
     updateStats((s) => {
       if (wasFlagged) s.cells.flagsRemoved += 1;
       else {
@@ -2738,6 +2816,7 @@ function collectAllAvailableOre() {
   updateHUD();
 
   if (checkVictory(state)) {
+    triggerVictoryWave();
     narrate("clear");
     endGame("clear");
   }
