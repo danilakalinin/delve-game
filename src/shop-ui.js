@@ -131,20 +131,39 @@ export function buildShopScreen() {
         <!-- Правая колонка -->
         <div class="shop-right">
 
+          <div class="card shop-phase-card">
+            <div class="shop-phase-bar">
+              <div class="shop-phase-fill" id="shop-phase-fill"></div>
+              <span class="shop-phase-label" id="shop-phase-label">Рабочий поток</span>
+            </div>
+          </div>
+
           <div class="card shop-econ-card">
             <div class="card-header">
               <span class="card-header-icon">📈</span>
-              <span class="card-header-text">Экономика потока</span>
+              <span class="card-header-text">Экономика</span>
             </div>
             <div class="shop-econ-body" id="shop-econ-body"></div>
           </div>
 
-          <div class="card shop-flow-card">
+          <div class="card shop-floor-card">
             <div class="card-header">
-              <span class="card-header-icon">🧍</span>
-              <span class="card-header-text">Очередь и продавцы</span>
+              <span class="card-header-icon">🏪</span>
+              <span class="card-header-text">Торговый зал</span>
             </div>
-            <div class="shop-flow-body" id="shop-flow-body"></div>
+            <div class="shop-flow-body" id="shop-flow-body">
+              <div class="shop-counter" id="shop-counter"></div>
+              <div class="shop-queue-lane" id="shop-queue-lane"></div>
+              <div class="shop-queue-meta" id="shop-queue-meta"></div>
+            </div>
+          </div>
+
+          <div class="card shop-events-card">
+            <div class="card-header">
+              <span class="card-header-icon">💬</span>
+              <span class="card-header-text">Что происходит</span>
+            </div>
+            <div class="shop-events-feed" id="shop-events-feed"></div>
           </div>
 
           <div class="shop-tabs">
@@ -211,6 +230,7 @@ export function initShopScreen(onBackFn) {
     });
   });
 
+  renderPhaseIndicator();
   renderShopStats();
   renderShopEconomyPanel();
   renderShopFlowPanel();
@@ -244,9 +264,11 @@ export function startShopTick() {
         _onCaravanEvent?.({ ...r, phase: "arrival" });
       });
     }
+    renderPhaseIndicator();
     renderShopStats();
     renderShopEconomyPanel();
     renderShopFlowPanel();
+    renderEventsFeed();
     renderCaravansTab();
   }, 1000);
 }
@@ -308,79 +330,93 @@ export function renderShopStats() {
   }
 }
 
-export function renderShopFlowPanel() {
-  const el = document.getElementById("shop-flow-body");
-  if (!el) return;
+// ─── ФАЗОВЫЙ ИНДИКАТОР ────────────────────────────────────────────────────
+
+function renderPhaseIndicator() {
+  const fillEl  = document.getElementById("shop-phase-fill");
+  const labelEl = document.getElementById("shop-phase-label");
+  if (!fillEl || !labelEl) return;
 
   const flow = getShopFlowState();
-  const sellerUnits = getStaffLevel("seller");
-  const queuePreview = flow.queue.slice(0, 8);
-  const queueTail = Math.max(0, flow.queueSize - queuePreview.length);
-  const arrivedPreview = flow.arrivedPreview ?? [];
+  fillEl.style.width = `${Math.round(flow.phaseProgress * 100)}%`;
+  fillEl.className = `shop-phase-fill shop-phase-${flow.phaseId}`;
+  labelEl.textContent = flow.phaseLabel;
+}
 
-  const sellersHtml = sellerUnits > 0
-    ? Array.from({ length: sellerUnits }, (_, i) =>
-      `<span class="shop-seller-unit" title="Продавец ур. ${i + 1}">🧑‍💼</span>`
-    ).join("")
-    : '<span class="shop-seller-empty">Продавцы не наняты</span>';
+// ─── ТОРГОВЫЙ ЗАЛ ────────────────────────────────────────────────────────
 
-  const queueRows = queuePreview.length
-    ? queuePreview.map((v, idx) => `
-      <div class="shop-queue-item">
-        <span class="shop-queue-pos">${idx + 1}</span>
-        <span class="shop-queue-name">${v.name}</span>
-        <span class="shop-queue-wait">${v.patienceSec}с</span>
-      </div>
-    `).join("")
-    : (arrivedPreview.length
-      ? arrivedPreview.map((name) => `
-        <div class="shop-queue-item shop-queue-item-light">
-          <span class="shop-queue-pos">→</span>
-          <span class="shop-queue-name">${name}</span>
-          <span class="shop-queue-wait">вход</span>
-        </div>
-      `).join("")
-      : '<div class="shop-queue-empty">Очередь пуста.</div>');
+export function renderShopFlowPanel() {
+  const counterEl  = document.getElementById("shop-counter");
+  const laneEl     = document.getElementById("shop-queue-lane");
+  const metaEl     = document.getElementById("shop-queue-meta");
+  if (!counterEl || !laneEl || !metaEl) return;
 
-  el.innerHTML = `
-    <div class="shop-flow-row">
-      <span>Фаза потока</span>
-      <strong>${flow.phaseLabel}</strong>
-    </div>
-    <div class="shop-flow-row">
-      <span>Очередь</span>
-      <strong>${flow.queueSize}/${flow.queueCapacity}</strong>
-    </div>
-    <div class="shop-flow-row">
-      <span>Приходит / сек</span>
-      <strong>${flow.expectedArrivalsPerSec.toFixed(2)}</strong>
-    </div>
-    <div class="shop-flow-row">
-      <span>Пропускная способность</span>
-      <strong>${flow.checkoutRatePerSec.toFixed(2)} / сек</strong>
-    </div>
-    <div class="shop-flow-row">
-      <span>Обслужено (тик)</span>
-      <strong>${flow.servedLastTick}</strong>
-    </div>
-    <div class="shop-flow-row">
-      <span>Ушло без сделки</span>
-      <strong>${flow.leftLastTick}</strong>
-    </div>
-    <div class="shop-sellers-strip">${sellersHtml}</div>
-    <div class="shop-queue-list">
-      ${queueRows}
-      ${queueTail > 0 ? `<div class="shop-queue-tail">+ еще ${queueTail} в очереди</div>` : ""}
-    </div>
-  `;
+  const flow = getShopFlowState();
+  const sellerLvl = getStaffLevel("seller");
+
+  // ─ Кассы (слоты продавцов) ─
+  const totalSlots = Math.max(1, sellerLvl);
+  const activeSlots = flow.servedLastTick;
+  counterEl.innerHTML = Array.from({ length: totalSlots }, (_, i) => {
+    const isActive = i < activeSlots;
+    const emoji = sellerLvl > 0 ? "🧑‍💼" : "🪑";
+    return `<div class="shop-counter-slot${isActive ? " shop-counter-active" : ""}">${emoji}${isActive ? '<span class="shop-counter-spark">💰</span>' : ""}</div>`;
+  }).join("");
+
+  // ─ Визуальная очередь (DOM-diffing) ─
+  const queueIds = new Set(flow.queue.map((v) => String(v.id)));
+
+  // Удаляем ушедших
+  Array.from(laneEl.children).forEach((el) => {
+    const vid = el.getAttribute("data-vid");
+    if (!vid || !queueIds.has(vid)) {
+      el.classList.add("shop-visitor-exit");
+      setTimeout(() => el.remove(), 300);
+    }
+  });
+
+  // Обновляем/добавляем
+  flow.queue.forEach((v) => {
+    const vid = String(v.id);
+    let el = laneEl.querySelector(`[data-vid="${vid}"]`);
+    const ratio = v.patienceRatio;
+    const moodClass = ratio < 0.15 ? "shop-visitor-angry" : ratio < 0.35 ? "shop-visitor-worried" : "";
+
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "shop-visitor shop-visitor-enter";
+      el.setAttribute("data-vid", vid);
+      el.innerHTML = `
+        <div class="shop-visitor-avatar">${v.avatar}</div>
+        <div class="shop-visitor-patience"><div class="shop-visitor-patience-fill"></div></div>
+        <div class="shop-visitor-name">${v.name}</div>`;
+      laneEl.appendChild(el);
+      requestAnimationFrame(() => el.classList.remove("shop-visitor-enter"));
+    }
+
+    // Обновляем patience bar
+    const barFill = el.querySelector(".shop-visitor-patience-fill");
+    if (barFill) {
+      barFill.style.setProperty("--p", ratio.toFixed(2));
+      barFill.className = `shop-visitor-patience-fill ${ratio > 0.5 ? "patience-ok" : ratio > 0.25 ? "patience-warn" : "patience-crit"}`;
+    }
+
+    // Mood
+    el.classList.remove("shop-visitor-worried", "shop-visitor-angry");
+    if (moodClass) el.classList.add(moodClass);
+  });
+
+  // ─ Мета ─
+  const overflow = Math.max(0, flow.queueSize - flow.queue.length);
+  metaEl.innerHTML = flow.queueSize > 0
+    ? `<span>${flow.queueSize}/${flow.queueCapacity}</span>${overflow > 0 ? `<span class="shop-queue-overflow">+${overflow} за кадром</span>` : ""}`
+    : '<span class="shop-queue-empty-msg">Очередь пуста</span>';
 }
 
 export function renderShopEconomyPanel() {
   const el = document.getElementById("shop-econ-body");
   if (!el) return;
 
-  const ads = getCurrentAdsUpgrade();
-  const adsMult = ads?.mult ?? 1;
   const bulkMult = getCurrentBulkMultiplier();
   const staff = getStaffBonuses();
   const flow = getShopFlowState();
@@ -388,29 +424,69 @@ export function renderShopEconomyPanel() {
   const avgWantsBase = (SHOP_CONFIG.minBuy + SHOP_CONFIG.maxBuy) / 2;
   const avgBuy = avgWantsBase * staff.avgBuyMult * bulkMult;
   const oreType = getPreferredOreForSale();
-  const oreLabel = ORE_CONFIG[oreType]?.label ?? "Руда";
   const orePrice = getOrePrice(oreType);
   const grossPerSec = avgVisitorsPerSec * avgBuy * orePrice;
   const lossRate = getLossRate();
   const lossPerSec = grossPerSec * lossRate;
   const salaryPerSec = getTotalSalaryPerSec();
   const netPerSec = grossPerSec - lossPerSec - salaryPerSec;
+  const lossPct = Math.round(lossRate * 100);
 
   el.innerHTML = `
-    <div class="shop-econ-row"><span>Текущая руда в потоке</span><strong>${oreLabel}</strong></div>
-    <div class="shop-econ-row"><span>Валовый доход</span><strong>${grossPerSec.toFixed(2)} монет/сек</strong></div>
-    <div class="shop-econ-row"><span>Потери от утечек</span><strong>−${lossPerSec.toFixed(2)} монет/сек</strong></div>
-    <div class="shop-econ-row"><span>Зарплаты штата</span><strong>−${salaryPerSec.toFixed(2)} монет/сек</strong></div>
-    <div class="shop-econ-row total"><span>Чистый доход</span><strong>${netPerSec.toFixed(2)} монет/сек</strong></div>
-    <div class="shop-econ-reasons">
-      <div>Причины и бонусы:</div>
-      <div>📣 Реклама: ×${adsMult.toFixed(2)} к потоку посетителей</div>
-      <div>📦 Опт. поток: ×${bulkMult.toFixed(2)} к размеру покупки</div>
-      <div>👥 Продавцы: ×${staff.visitorChanceMult.toFixed(2)} к шансу сделки</div>
-      <div>🧾 Кассиры: ×${staff.avgBuyMult.toFixed(2)} к среднему чеку</div>
-      <div>💂 Потери: ${(lossRate * 100).toFixed(1)}%</div>
+    <div class="shop-econ-grid">
+      <div class="shop-econ-metric">
+        <span class="shop-econ-val ${netPerSec >= 0 ? "color-green" : "color-red"}">${netPerSec.toFixed(1)}</span>
+        <span class="shop-econ-unit">монет/с</span>
+      </div>
+      <div class="shop-econ-metric">
+        <span class="shop-econ-val">${flow.checkoutRatePerSec.toFixed(2)}</span>
+        <span class="shop-econ-unit">обсл./с</span>
+      </div>
+      <div class="shop-econ-metric">
+        <span class="shop-econ-val ${lossPct > 4 ? "color-red" : "color-dim"}">${lossPct}%</span>
+        <span class="shop-econ-unit">потери</span>
+      </div>
+    </div>
+    <div class="shop-econ-breakdown">
+      <span>Валовый ${grossPerSec.toFixed(1)}</span>
+      <span>Потери −${lossPerSec.toFixed(1)}</span>
+      <span>Зарплата −${salaryPerSec.toFixed(1)}</span>
     </div>
   `;
+}
+
+// ─── ЛЕНТА СОБЫТИЙ ────────────────────────────────────────────────────────
+
+const EVENT_ICONS = { arrive: "🚪", sale: "💰", leave: "💨" };
+const MAX_EVENTS = 6;
+
+function renderEventsFeed() {
+  const feedEl = document.getElementById("shop-events-feed");
+  if (!feedEl) return;
+
+  const flow = getShopFlowState();
+  const events = flow.lastTickEvents;
+  if (!events.length) return;
+
+  events.forEach((evt) => {
+    const icon = EVENT_ICONS[evt.type] ?? "❓";
+    let text = "";
+    if (evt.type === "arrive") text = `${evt.avatar} ${evt.name} зашёл`;
+    else if (evt.type === "sale") text = `${evt.avatar} ${evt.name} купил ${evt.oreBought} ${evt.oreLabel}`;
+    else if (evt.type === "leave") text = `${evt.avatar} ${evt.name} ушёл`;
+
+    const div = document.createElement("div");
+    div.className = `shop-event shop-event-${evt.type} shop-event-in`;
+    div.innerHTML = `<span class="shop-event-icon">${icon}</span><span class="shop-event-text">${text}</span>`;
+    feedEl.insertBefore(div, feedEl.firstChild);
+  });
+
+  // Обрезаем до MAX
+  while (feedEl.children.length > MAX_EVENTS) {
+    const last = feedEl.lastChild;
+    last.classList.add("shop-event-out");
+    setTimeout(() => last.remove(), 300);
+  }
 }
 
 // ─── РЕНДЕР ОТЗЫВОВ ───────────────────────────────────────────────────────────

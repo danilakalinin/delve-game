@@ -46,6 +46,11 @@ const FLOW_PHASES = [
   { id: "rush", label: "Наплыв", durationSec: 25, flowMult: 2.15 },
 ];
 
+const VISITOR_AVATARS = [
+  "👨","👩","🧑","👦","👧","👴","👵","🧔","👱","👲",
+  "🧕","👳","🧒","👸","🤴","🧙","🧝","🧑‍🦰","🧑‍🦱","🧑‍🦳",
+];
+
 const FLOW_STATE = {
   phaseIndex: 0,
   phaseElapsedSec: 0,
@@ -58,6 +63,7 @@ const FLOW_STATE = {
   expectedArrivalsPerSec: 0,
   checkoutRatePerSec: 1,
   arrivedPreview: [],
+  lastTickEvents: [],
 };
 
 // Цена конкретного вида руды
@@ -237,6 +243,10 @@ function pickVisitorName() {
   return VISITOR_NAMES[idx] ?? "Гость";
 }
 
+function pickVisitorAvatar() {
+  return VISITOR_AVATARS[Math.floor(Math.random() * VISITOR_AVATARS.length)];
+}
+
 function getQueueCapacity() {
   const adsLevel = getAdsLevel();
   return 10 + adsLevel * 3;
@@ -257,14 +267,20 @@ function spawnQueueVisitors(expectedPerSec) {
       FLOW_STATE.overflowLastTick += 1;
       continue;
     }
+    const patience = 14 + Math.floor(Math.random() * 20);
+    const avatar = pickVisitorAvatar();
+    const name = pickVisitorName();
     FLOW_STATE.queue.push({
       id: FLOW_STATE.nextVisitorId++,
-      name: pickVisitorName(),
-      patienceSec: 14 + Math.floor(Math.random() * 20),
+      name,
+      avatar,
+      patienceSec: patience,
+      maxPatienceSec: patience,
       orderScale: 0.85 + Math.random() * 0.6,
     });
+    FLOW_STATE.lastTickEvents.push({ type: "arrive", name, avatar });
     if (FLOW_STATE.arrivedPreview.length < 6) {
-      FLOW_STATE.arrivedPreview.push(FLOW_STATE.queue[FLOW_STATE.queue.length - 1].name);
+      FLOW_STATE.arrivedPreview.push(name);
     }
   }
 }
@@ -275,6 +291,7 @@ function applyQueuePatienceLoss() {
   FLOW_STATE.queue = FLOW_STATE.queue.filter((v) => {
     if (v.patienceSec > 0) return true;
     left += 1;
+    FLOW_STATE.lastTickEvents.push({ type: "leave", name: v.name, avatar: v.avatar });
     return false;
   });
   FLOW_STATE.leftLastTick = left + FLOW_STATE.overflowLastTick;
@@ -307,7 +324,10 @@ export function getShopFlowState() {
     queue: FLOW_STATE.queue.slice(0, 12).map((v) => ({
       id: v.id,
       name: v.name,
+      avatar: v.avatar,
       patienceSec: v.patienceSec,
+      maxPatienceSec: v.maxPatienceSec,
+      patienceRatio: v.maxPatienceSec > 0 ? v.patienceSec / v.maxPatienceSec : 0,
     })),
     arrivedLastTick: FLOW_STATE.arrivedLastTick,
     servedLastTick: FLOW_STATE.servedLastTick,
@@ -315,6 +335,7 @@ export function getShopFlowState() {
     expectedArrivalsPerSec: FLOW_STATE.expectedArrivalsPerSec,
     checkoutRatePerSec: FLOW_STATE.checkoutRatePerSec,
     arrivedPreview: FLOW_STATE.arrivedPreview.slice(),
+    lastTickEvents: FLOW_STATE.lastTickEvents.slice(),
   };
 }
 
@@ -340,6 +361,8 @@ export function buyAdsUpgrade() {
 
 export function shopTick() {
   if (!isShopOpen()) return null;
+
+  FLOW_STATE.lastTickEvents = [];
 
   advanceFlowPhase();
   const phase = getCurrentPhase();
@@ -388,6 +411,12 @@ export function shopTick() {
 
     spendOreFromBank(chosenType, oreBought);
     addGold(goldEarned);
+
+    const oreLabel = ORE_CONFIG[chosenType]?.label ?? "руды";
+    FLOW_STATE.lastTickEvents.push({
+      type: "sale", name: visitor.name, avatar: visitor.avatar,
+      oreLabel, oreBought, goldEarned,
+    });
 
     oreBoughtTotal += oreBought;
     goldEarnedTotal += goldEarned;
