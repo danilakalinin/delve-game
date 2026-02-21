@@ -366,8 +366,9 @@ export function renderShopFlowPanel() {
   // ─ Визуальная очередь (DOM-diffing) ─
   const queueIds = new Set(flow.queue.map((v) => String(v.id)));
 
-  // Удаляем ушедших
+  // Удаляем ушедших (с защитой от повторной анимации)
   Array.from(laneEl.children).forEach((el) => {
+    if (el.classList.contains("shop-visitor-exit")) return;
     const vid = el.getAttribute("data-vid");
     if (!vid || !queueIds.has(vid)) {
       el.classList.add("shop-visitor-exit");
@@ -375,10 +376,10 @@ export function renderShopFlowPanel() {
     }
   });
 
-  // Обновляем/добавляем
+  // Обновляем/добавляем (пропускаем элементы с exit-анимацией)
   flow.queue.forEach((v) => {
     const vid = String(v.id);
-    let el = laneEl.querySelector(`[data-vid="${vid}"]`);
+    let el = laneEl.querySelector(`[data-vid="${vid}"]:not(.shop-visitor-exit)`);
     const ratio = v.patienceRatio;
     const moodClass = ratio < 0.15 ? "shop-visitor-angry" : ratio < 0.35 ? "shop-visitor-worried" : "";
 
@@ -481,11 +482,9 @@ function renderEventsFeed() {
     feedEl.insertBefore(div, feedEl.firstChild);
   });
 
-  // Обрезаем до MAX
+  // Обрезаем до MAX — удаляем сразу чтобы не уйти в бесконечный цикл
   while (feedEl.children.length > MAX_EVENTS) {
-    const last = feedEl.lastChild;
-    last.classList.add("shop-event-out");
-    setTimeout(() => last.remove(), 300);
+    feedEl.lastChild.remove();
   }
 }
 
