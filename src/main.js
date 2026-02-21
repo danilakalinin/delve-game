@@ -524,7 +524,7 @@ document.getElementById("app").innerHTML = `
 
       <!-- Launcher Hero -->
       <div class="launcher-hero">
-        <button class="launcher-play-btn" id="launcher-play-btn" type="button">▶ ИГРАТЬ В САПЁР</button>
+        <button class="launcher-play-btn" id="launcher-play-btn" type="button">▶ ИГРАТЬ В САПЕР</button>
         <div class="launcher-diff-error" id="launcher-diff-error"></div>
         <div id="diff-options" class="diff-options-grid"></div>
         <div class="depth-panel" id="depth-panel">

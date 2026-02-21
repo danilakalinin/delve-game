@@ -531,8 +531,8 @@ body {
 }
 
 .launcher-play-btn {
-  font-family: "Pixelify Sans", "Press Start 2P", monospace;
-  font-size: clamp(14px, 2vw, 22px);
+  font-family: var(--font-heading);
+  font-size: clamp(16px, 2.2vw, 24px);
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, #14532d 0%, #166534 45%, #15803d 100%);
