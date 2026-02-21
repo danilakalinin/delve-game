@@ -401,6 +401,22 @@ function getTowerAt(x, y) {
   return state.towers.find((t) => distance({ x, y }, t) <= TOWER_HIT_RADIUS) ?? null;
 }
 
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - ax, py - ay);
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+function isOnPath(x, y, margin = 28) {
+  for (let i = 0; i < PATH_POINTS.length - 1; i++) {
+    const a = PATH_POINTS[i], b = PATH_POINTS[i + 1];
+    if (distToSegment(x, y, a.x, a.y, b.x, b.y) < margin) return true;
+  }
+  return false;
+}
+
 function canPlaceTowerAt(x, y) {
   if (
     x < MAP_PADDING ||
@@ -410,6 +426,7 @@ function canPlaceTowerAt(x, y) {
   ) {
     return false;
   }
+  if (isOnPath(x, y)) return false;
   for (const tower of state.towers) {
     if (distance({ x, y }, tower) < TOWER_MIN_GAP) return false;
   }
@@ -570,58 +587,109 @@ function updateSpawning(dt) {
 function drawPath() {
   if (!ctx) return;
   ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
+  ctx.lineCap = "square";
+  ctx.lineJoin = "miter";
 
-  // Dark outer edge
-  ctx.strokeStyle = "#2a1d12";
-  ctx.lineWidth = 44;
-  ctx.beginPath();
-  ctx.moveTo(PATH_POINTS[0].x, PATH_POINTS[0].y);
-  for (let i = 1; i < PATH_POINTS.length; i += 1) {
-    ctx.lineTo(PATH_POINTS[i].x, PATH_POINTS[i].y);
+  const pts = PATH_POINTS;
+
+  // Helper: draw the path shape
+  function tracePath() {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
   }
+
+  // 1. Outermost dark border
+  tracePath();
+  ctx.strokeStyle = "#1a1108";
+  ctx.lineWidth = 48;
   ctx.stroke();
 
-  // Main road body
-  ctx.strokeStyle = "#4a3525";
-  ctx.lineWidth = 36;
-  ctx.stroke();
-
-  // Light center highlight
-  ctx.strokeStyle = "#7a5f42";
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  // Dashed stone border
-  ctx.setLineDash([8, 12]);
-  ctx.strokeStyle = "rgba(160,130,90,0.22)";
+  // 2. Stone base
+  tracePath();
+  ctx.strokeStyle = "#3d2e1e";
   ctx.lineWidth = 40;
+  ctx.stroke();
+
+  // 3. Mid stone
+  tracePath();
+  ctx.strokeStyle = "#55402e";
+  ctx.lineWidth = 32;
+  ctx.stroke();
+
+  // 4. Surface with texture
+  tracePath();
+  ctx.strokeStyle = "#6b5038";
+  ctx.lineWidth = 24;
+  ctx.stroke();
+
+  // 5. Inner lighter center strip
+  tracePath();
+  ctx.strokeStyle = "#7d5f42";
+  ctx.lineWidth = 10;
+  ctx.stroke();
+
+  // 6. Stone joint lines (dashed crosshatch look)
+  ctx.lineCap = "butt";
+  ctx.setLineDash([14, 10]);
+  ctx.strokeStyle = "rgba(40,25,12,0.55)";
+  ctx.lineWidth = 28;
+  ctx.lineDashOffset = 0;
+  tracePath();
+  ctx.stroke();
+
+  ctx.setLineDash([14, 10]);
+  ctx.lineDashOffset = 12;
+  ctx.strokeStyle = "rgba(40,25,12,0.3)";
+  ctx.lineWidth = 14;
+  tracePath();
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Entrance marker
-  const start = PATH_POINTS[0];
-  ctx.fillStyle = "#6ee7a0";
-  ctx.shadowColor = "rgba(110,231,160,0.5)";
-  ctx.shadowBlur = 8;
+  // 7. Edge highlight (top-lit feel)
+  ctx.lineCap = "round";
+  tracePath();
+  ctx.strokeStyle = "rgba(160,120,70,0.14)";
+  ctx.lineWidth = 22;
+  ctx.stroke();
+
+  // Entrance marker (green arrow-down)
+  const s = pts[0];
+  ctx.shadowColor = "rgba(110,231,160,0.6)";
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = "#4ade80";
   ctx.beginPath();
-  ctx.moveTo(start.x - 6, start.y - 12);
-  ctx.lineTo(start.x + 6, start.y - 12);
-  ctx.lineTo(start.x, start.y - 2);
+  ctx.moveTo(s.x - 8, s.y - 20);
+  ctx.lineTo(s.x + 8, s.y - 20);
+  ctx.lineTo(s.x + 8, s.y - 12);
+  ctx.lineTo(s.x + 14, s.y - 12);
+  ctx.lineTo(s.x, s.y - 2);
+  ctx.lineTo(s.x - 14, s.y - 12);
+  ctx.lineTo(s.x - 8, s.y - 12);
   ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = "#166534";
+  ctx.lineWidth = 1;
+  ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Fortress marker at end
-  const end = PATH_POINTS[PATH_POINTS.length - 1];
-  ctx.fillStyle = "#f87171";
+  // Fortress marker at end (castle silhouette)
+  const e = pts[pts.length - 1];
   ctx.shadowColor = "rgba(248,113,113,0.5)";
-  ctx.shadowBlur = 8;
-  ctx.fillRect(end.x - 8, end.y - 10, 16, 14);
-  ctx.fillStyle = "#fca5a5";
-  ctx.fillRect(end.x - 4, end.y - 14, 3, 6);
-  ctx.fillRect(end.x + 1, end.y - 14, 3, 6);
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = "#dc2626";
+  // Wall base
+  ctx.fillRect(e.x - 12, e.y - 18, 24, 16);
+  // Battlements (3 merlons)
+  ctx.fillRect(e.x - 12, e.y - 26, 6, 10);
+  ctx.fillRect(e.x - 3,  e.y - 26, 6, 10);
+  ctx.fillRect(e.x + 6,  e.y - 26, 6, 10);
+  // Gate arch
+  ctx.fillStyle = "#1a0a0a";
+  ctx.beginPath();
+  ctx.arc(e.x, e.y - 8, 4, Math.PI, 0);
+  ctx.rect(e.x - 4, e.y - 8, 8, 6);
+  ctx.fill();
   ctx.shadowBlur = 0;
 
   ctx.restore();
@@ -874,18 +942,72 @@ function drawBullets() {
   }
 }
 
+const TREE_DECO = [
+  {x:22,y:28,r:16},{x:58,y:18,r:12},{x:88,y:38,r:14},{x:40,y:58,r:10},
+  {x:716,y:22,r:15},{x:755,y:38,r:12},{x:778,y:18,r:10},{x:740,y:58,r:11},
+  {x:22,y:335,r:14},{x:52,y:358,r:11},{x:82,y:345,r:12},
+  {x:598,y:340,r:13},{x:635,y:358,r:11},{x:666,y:344,r:10},
+  {x:232,y:22,r:12},{x:268,y:15,r:10},
+  {x:412,y:22,r:13},{x:462,y:16,r:10},
+  {x:760,y:195,r:12},{x:788,y:225,r:9},
+  {x:22,y:170,r:10},{x:22,y:290,r:11},
+];
+
+function drawTerrain() {
+  // Base gradient
+  const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  bg.addColorStop(0, "#131c12");
+  bg.addColorStop(0.45, "#181c10");
+  bg.addColorStop(1, "#16110d");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Subtle dot grid (tower placement guide)
+  ctx.fillStyle = "rgba(255,255,255,0.028)";
+  for (let gx = 30; gx < canvas.width; gx += 34) {
+    for (let gy = 30; gy < canvas.height; gy += 34) {
+      ctx.beginPath();
+      ctx.arc(gx, gy, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Trees
+  for (const t of TREE_DECO) {
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(t.x + 3, t.y + 4, t.r * 0.9, t.r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fill();
+    // Dark canopy
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+    ctx.fillStyle = "#1a3318";
+    ctx.fill();
+    // Mid layer
+    ctx.beginPath();
+    ctx.arc(t.x - t.r * 0.2, t.y - t.r * 0.15, t.r * 0.65, 0, Math.PI * 2);
+    ctx.fillStyle = "#243f20";
+    ctx.fill();
+    // Highlight
+    ctx.beginPath();
+    ctx.arc(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.32, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(72,110,48,0.5)";
+    ctx.fill();
+  }
+
+  // Vignette
+  const vig = ctx.createRadialGradient(400, 190, 160, 400, 190, 420);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(0,0,0,0.38)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
 function renderCanvas() {
   if (!ctx || !canvas) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Gradient terrain background
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  bgGrad.addColorStop(0, "#151d14");
-  bgGrad.addColorStop(0.5, "#1a1810");
-  bgGrad.addColorStop(1, "#18120d");
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+  drawTerrain();
   drawPath();
   drawTowers();
   drawEnemies();
@@ -982,36 +1104,24 @@ function stopLoop() {
   state.raf = null;
 }
 
-function canvasCoords(e) {
-  const rect = canvas.getBoundingClientRect();
-  const canvasAspect = canvas.width / canvas.height;
-  const rectAspect = rect.width / rect.height;
-  let rw, rh, ox, oy;
-  if (rectAspect > canvasAspect) {
-    rh = rect.height; rw = rh * canvasAspect;
-    ox = (rect.width - rw) / 2; oy = 0;
-  } else {
-    rw = rect.width; rh = rw / canvasAspect;
-    ox = 0; oy = (rect.height - rh) / 2;
-  }
-  return {
-    x: ((e.clientX - rect.left - ox) / rw) * canvas.width,
-    y: ((e.clientY - rect.top - oy) / rh) * canvas.height,
-  };
-}
-
 function bindUi() {
   canvas = document.getElementById("td-canvas");
   if (!canvas) return;
   ctx = canvas.getContext("2d");
 
   canvas.addEventListener("click", (e) => {
-    const { x, y } = canvasCoords(e);
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
     handleCanvasClick(x, y);
   });
 
   canvas.addEventListener("pointermove", (e) => {
-    state.hoverPos = canvasCoords(e);
+    const rect = canvas.getBoundingClientRect();
+    state.hoverPos = {
+      x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+    };
   });
   canvas.addEventListener("pointerleave", () => {
     state.hoverPos = null;
