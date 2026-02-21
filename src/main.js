@@ -415,158 +415,180 @@ document.getElementById("app").innerHTML = `
   <!-- ══ ГЛАВНОЕ МЕНЮ ══ -->
   <div id="screen-start" class="screen active">
 
-    <!-- ── Заголовок + статус-бар ── -->
-    <div class="start-header">
-      <div class="start-title-block">
-        <div class="start-title">⛏ DELVE</div>
-        <div class="start-sub">Спуск в шахту · выживи и обогатись</div>
+    <!-- ── Навигационная панель ── -->
+    <nav class="start-topbar">
+      <div class="topbar-brand">
+        <div class="start-title">DELVE</div>
+        <div class="start-sub">Спуск в шахту</div>
       </div>
-      <div class="start-status-bar">
-        <div class="status-currencies">
-          <div class="status-bank-group ore-type-copper" id="bank-group-copper">
-            <span class="bank-ore-dot ore-dot-copper">●</span>
-            <span class="status-bank-val" id="bank-val-copper">0</span>
-            <span class="status-bank-unit">меди</span>
-          </div>
-          <div class="status-bank-group ore-type-silver" id="bank-group-silver" style="display:none">
-            <span class="bank-ore-dot ore-dot-silver">●</span>
-            <span class="status-bank-val" id="bank-val-silver">0</span>
-            <span class="status-bank-unit">серебр.</span>
-          </div>
-          <div class="status-bank-group ore-type-gold" id="bank-group-gold" style="display:none">
-            <span class="bank-ore-dot ore-dot-gold">●</span>
-            <span class="status-bank-val" id="bank-val-gold">0</span>
-            <span class="status-bank-unit">золота</span>
-          </div>
-          <div class="status-bank-group ore-type-diamond" id="bank-group-diamond" style="display:none">
-            <span class="bank-ore-dot ore-dot-diamond">●</span>
-            <span class="status-bank-val" id="bank-val-diamond">0</span>
-            <span class="status-bank-unit">алмазов</span>
-          </div>
-          <div class="status-gold-group" id="status-gold-group" style="display:none">
-            <span class="status-gold-icon">●</span>
-            <span class="status-gold-val" id="gold-display">0</span>
-            <span class="status-gold-unit">монет</span>
-          </div>
-          <div class="status-gold-group" id="status-ticket-group" style="display:none">
-            <span class="status-gold-icon">🎟</span>
-            <span class="status-gold-val" id="ticket-display">0</span>
-            <span class="status-gold-unit">билетов</span>
-          </div>
+      <div class="topbar-resources">
+        <div class="resource-chip ore-type-copper" id="bank-group-copper">
+          <span class="resource-dot ore-dot-copper"></span>
+          <span class="resource-val" id="bank-val-copper">0</span>
+          <span class="resource-label">меди</span>
         </div>
-        <div class="status-actions">
-          <button class="shop-open-btn btn-primary" id="open-shop-btn">🏪 МАГАЗИН</button>
-          <button class="shop-open-btn btn-primary" id="open-td-btn">🛡 TD</button>
-          <button class="shop-open-btn btn-primary" id="open-gacha-btn">🎰 ГАЧА</button>
-          <button class="shop-open-btn btn-primary" id="open-inventory-btn">🎒 ИНВЕНТАРЬ</button>
-          <button class="music-mute-btn btn-primary" id="music-mute-btn" type="button">🔊</button>
-          <input id="music-volume" class="music-slider status-music-slider" type="range" min="0" max="100" step="1" value="55">
+        <div class="resource-chip ore-type-silver" id="bank-group-silver" style="display:none">
+          <span class="resource-dot ore-dot-silver"></span>
+          <span class="resource-val" id="bank-val-silver">0</span>
+          <span class="resource-label">серебр.</span>
+        </div>
+        <div class="resource-chip ore-type-gold" id="bank-group-gold" style="display:none">
+          <span class="resource-dot ore-dot-gold"></span>
+          <span class="resource-val" id="bank-val-gold">0</span>
+          <span class="resource-label">золота</span>
+        </div>
+        <div class="resource-chip ore-type-diamond" id="bank-group-diamond" style="display:none">
+          <span class="resource-dot ore-dot-diamond"></span>
+          <span class="resource-val" id="bank-val-diamond">0</span>
+          <span class="resource-label">алмазов</span>
+        </div>
+        <div class="resource-chip resource-gold" id="status-gold-group" style="display:none">
+          <span class="resource-dot resource-dot-gold"></span>
+          <span class="resource-val" id="gold-display">0</span>
+          <span class="resource-label">монет</span>
+        </div>
+        <div class="resource-chip resource-ticket" id="status-ticket-group" style="display:none">
+          <span class="resource-dot resource-dot-ticket">🎟</span>
+          <span class="resource-val" id="ticket-display">0</span>
+          <span class="resource-label">билетов</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn topbar-btn-nav" id="open-shop-btn">🏪 Магазин</button>
+        <button class="topbar-btn topbar-btn-nav" id="open-td-btn">🛡 TD</button>
+        <button class="topbar-btn topbar-btn-nav" id="open-gacha-btn">🎰 Гача</button>
+        <button class="topbar-btn topbar-btn-nav" id="open-inventory-btn">🎒 Инвентарь</button>
+        <div class="topbar-separator"></div>
+        <div class="topbar-music-group">
+          <button class="topbar-btn topbar-btn-icon" id="music-mute-btn" type="button">🔊</button>
+          <input id="music-volume" class="music-slider" type="range" min="0" max="100" step="1" value="55">
           <span class="music-value" id="music-volume-value">55%</span>
-          <button class="reset-btn btn-danger" id="reset-btn" title="Сбросить прогресс">↺</button>
         </div>
-        <button class="help-btn" id="help-btn">? СПРАВКА</button>
+        <button class="topbar-btn topbar-btn-icon topbar-btn-danger" id="reset-btn" title="Сбросить прогресс">↺</button>
+        <button class="topbar-btn topbar-btn-icon" id="help-btn">?</button>
       </div>
-    </div>
+    </nav>
 
     <div id="ticker-mount"></div>
 
-    <div class="start-columns">
+    <!-- ── Основной контент ── -->
+    <div class="start-content">
 
-      <!-- ── Левая колонка: вылазка + улучшения ── -->
-      <div class="start-left-col">
-
-        <div class="panel start-expedition-panel">
-          <div class="panel-header"><span class="icon">🗺</span> ВЫБЕРИТЕ ВЫЛАЗКУ</div>
-          <div id="diff-options"></div>
+      <!-- Hero: Экспедиция -->
+      <div class="card start-expedition-card">
+        <div class="card-header">
+          <span class="card-header-icon">🗺</span>
+          <span class="card-header-text">Выберите вылазку</span>
+        </div>
+        <div class="card-body card-body-flush">
+          <div id="diff-options" class="diff-options-grid"></div>
           <div class="depth-panel" id="depth-panel">
-            <div class="depth-head">⛏ Глубина шахты: <strong id="depth-level">1</strong></div>
-            <div class="depth-sub" id="depth-effects">Бонус руды: +0% • Риск обвалов: +0%</div>
-            <div class="depth-sub" id="depth-idle">AFK-обвал: без штрафа</div>
-            <button class="btn-primary depth-upgrade-btn" id="depth-upgrade-btn">Углубить шахту</button>
-          </div>
-        </div>
-
-        <div class="panel upgrades-panel">
-          <div class="panel-header"><span class="icon">🏗</span> УЛУЧШЕНИЯ</div>
-          <div class="upgrades-grid" id="upgrades-grid"></div>
-        </div>
-
-      </div>
-
-      <!-- ── Правая колонка: персонаж + статистика ── -->
-      <div class="start-right-col">
-
-        <!-- Виджет уровня игрока -->
-        <div class="panel player-widget-panel" id="player-widget-panel">
-          <div class="panel-header"><span class="icon">🧑‍🏭</span> ПЕРСОНАЖ</div>
-          <div class="player-widget" id="player-widget">
-            <div class="pw-avatar-col">
-              <div class="pw-avatar" id="pw-avatar">👨</div>
-              <div class="pw-name" id="pw-name">Шахтер</div>
+            <div class="depth-info">
+              <div class="depth-head">⛏ Глубина шахты: <strong id="depth-level">1</strong></div>
+              <div class="depth-sub" id="depth-effects">Бонус руды: +0% • Риск обвалов: +0%</div>
+              <div class="depth-sub" id="depth-idle">AFK-обвал: без штрафа</div>
             </div>
-            <div class="pw-level-col">
-              <div class="pw-level-row">
-                <span class="pw-level-label">УР.</span>
-                <span class="pw-level-num" id="pw-level-num">1</span>
-                <span class="pw-level-max">/60</span>
-                <span class="pw-title" id="pw-title">Копатель-неудачник</span>
-              </div>
-              <div class="pw-subtitle" id="pw-subtitle">Падение было долгим. Ты всё ещё падаешь.</div>
-              <div class="pw-xp-bar-wrap">
-                <div class="pw-xp-bar" id="pw-xp-bar" style="width:0%"></div>
-                <div class="pw-xp-label" id="pw-xp-label">0 / 100 XP</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel stats-panel">
-          <div class="panel-header"><span class="icon">📊</span> СТАТИСТИКА</div>
-          <div class="stats-content" id="stats-content"></div>
-        </div>
-
-        <div class="panel help-panel" id="help-panel" style="display:none;">
-          <div class="panel-header">
-            <span class="icon">📖</span> СПРАВКА
-            <button class="help-close-btn" id="help-close-btn">✕</button>
-          </div>
-          <div class="panel-body">
-            <div class="legend-grid">
-              <div class="legend-sym"><img class="legend-icon" id="legend-rocks" src="" draggable="false"></div>
-              <div class="legend-text"><strong>Порода</strong> — нераскопано. ЛКМ — копать.</div>
-
-              <div class="legend-sym open-cell">!</div>
-              <div class="legend-text"><strong>Метка опасности</strong> — ПКМ поставить / снять.</div>
-
-              <div class="legend-sym open-cell"><img class="legend-icon" id="legend-ore" src="" draggable="false"></div>
-              <div class="legend-text"><strong>Руда</strong> — кликни чтобы собрать, идёт в банк.</div>
-
-              <div class="legend-sym open-cell" style="color:#ee4444;">*</div>
-              <div class="legend-text"><strong>Нестабильная порода</strong> — удар → -1 HP + обвал!</div>
-
-              <div class="legend-sym open-cell" style="color:#5599dd;font-size:10px;">1–4</div>
-              <div class="legend-text"><strong>Цифра</strong> — нестабильных соседей рядом.</div>
-
-              <hr class="legend-sep">
-
-              <div class="legend-sym open-cell"><img class="legend-icon" id="legend-hearth" src="" draggable="false"></div>
-              <div class="legend-text">При нуле HP — вылазка заканчивается.</div>
-
-              <div class="legend-sym open-cell" style="color:#ee8833;font-size:24px;">⚠</div>
-              <div class="legend-text">
-                <strong>Обвал при ударе</strong> — мгновенно по нестаб. клетке.<br>
-                <strong>Обвал при простое</strong> — если долго не копать.
-              </div>
-
-              <hr class="legend-sep">
-
-              <div class="legend-sym open-cell" style="color:#c8a84b;">🚪</div>
-              <div class="legend-text"><strong>Выход</strong> — кнопка в HUD. Теряешь часть руды.</div>
-            </div>
+            <button class="btn-modern btn-accent depth-upgrade-btn" id="depth-upgrade-btn">Углубить шахту</button>
           </div>
         </div>
       </div>
 
+      <!-- Две колонки -->
+      <div class="start-columns">
+
+        <div class="start-left-col">
+
+          <!-- Персонаж -->
+          <div class="card player-card" id="player-widget-panel">
+            <div class="card-header">
+              <span class="card-header-icon">🧑‍🏭</span>
+              <span class="card-header-text">Персонаж</span>
+            </div>
+            <div class="card-body">
+              <div class="player-widget" id="player-widget">
+                <div class="pw-avatar-col">
+                  <div class="pw-avatar" id="pw-avatar">👨</div>
+                  <div class="pw-name" id="pw-name">Шахтер</div>
+                </div>
+                <div class="pw-level-col">
+                  <div class="pw-level-row">
+                    <span class="pw-level-label">УР.</span>
+                    <span class="pw-level-num" id="pw-level-num">1</span>
+                    <span class="pw-level-max">/60</span>
+                    <span class="pw-title" id="pw-title">Копатель-неудачник</span>
+                  </div>
+                  <div class="pw-subtitle" id="pw-subtitle">Падение было долгим. Ты всё ещё падаешь.</div>
+                  <div class="pw-xp-bar-wrap">
+                    <div class="pw-xp-bar" id="pw-xp-bar" style="width:0%"></div>
+                    <div class="pw-xp-label" id="pw-xp-label">0 / 100 XP</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Улучшения -->
+          <div class="card upgrades-card">
+            <div class="card-header">
+              <span class="card-header-icon">🏗</span>
+              <span class="card-header-text">Улучшения</span>
+            </div>
+            <div class="card-body card-body-flush">
+              <div class="upgrades-grid" id="upgrades-grid"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="start-right-col">
+
+          <!-- Статистика -->
+          <div class="card stats-card">
+            <div class="card-header">
+              <span class="card-header-icon">📊</span>
+              <span class="card-header-text">Статистика</span>
+            </div>
+            <div class="card-body">
+              <div class="stats-content" id="stats-content"></div>
+            </div>
+          </div>
+
+          <!-- Справка -->
+          <div class="card help-card" id="help-panel" style="display:none;">
+            <div class="card-header">
+              <span class="card-header-icon">📖</span>
+              <span class="card-header-text">Справка</span>
+              <button class="help-close-btn" id="help-close-btn">✕</button>
+            </div>
+            <div class="card-body">
+              <div class="legend-grid">
+                <div class="legend-sym"><img class="legend-icon" id="legend-rocks" src="" draggable="false"></div>
+                <div class="legend-text"><strong>Порода</strong> — нераскопано. ЛКМ — копать.</div>
+                <div class="legend-sym open-cell">!</div>
+                <div class="legend-text"><strong>Метка опасности</strong> — ПКМ поставить / снять.</div>
+                <div class="legend-sym open-cell"><img class="legend-icon" id="legend-ore" src="" draggable="false"></div>
+                <div class="legend-text"><strong>Руда</strong> — кликни чтобы собрать, идёт в банк.</div>
+                <div class="legend-sym open-cell" style="color:#ee4444;">*</div>
+                <div class="legend-text"><strong>Нестабильная порода</strong> — удар → -1 HP + обвал!</div>
+                <div class="legend-sym open-cell" style="color:#5599dd;font-size:10px;">1–4</div>
+                <div class="legend-text"><strong>Цифра</strong> — нестабильных соседей рядом.</div>
+                <hr class="legend-sep">
+                <div class="legend-sym open-cell"><img class="legend-icon" id="legend-hearth" src="" draggable="false"></div>
+                <div class="legend-text">При нуле HP — вылазка заканчивается.</div>
+                <div class="legend-sym open-cell" style="color:#ee8833;font-size:24px;">⚠</div>
+                <div class="legend-text">
+                  <strong>Обвал при ударе</strong> — мгновенно по нестаб. клетке.<br>
+                  <strong>Обвал при простое</strong> — если долго не копать.
+                </div>
+                <hr class="legend-sep">
+                <div class="legend-sym open-cell" style="color:#c8a84b;">🚪</div>
+                <div class="legend-text"><strong>Выход</strong> — кнопка в HUD. Теряешь часть руды.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>
 
