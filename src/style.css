@@ -2078,6 +2078,18 @@ html, body {
 .shop-event-sale   { border-left-color: #22c55e; }
 .shop-event-leave  { border-left-color: #ef4444; }
 
+.shop-event-empty {
+  border-left-color: #6b7280;
+  color: var(--text-dim);
+  font-style: italic;
+  animation: empty-pulse 2s ease-in-out infinite;
+}
+
+@keyframes empty-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
 .shop-event-in {
   animation: shop-event-in 0.3s ease-out;
 }

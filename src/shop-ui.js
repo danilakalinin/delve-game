@@ -17,9 +17,10 @@ import {
   getOreBank, getOrePrice,
   getLossRate,
   getShopFlowState,
+  getTotalOreInBank,
 } from './shop.js';
 import { ORE_COPPER, ORE_SILVER, ORE_GOLD, ORE_DIAMOND, ORE_CONFIG } from './game.js';
-import { addShopReview, buildShopReview, getShopReviews } from "./shop-reviews.js";
+import { addShopReview, buildShopReview, buildEmptyShopReview, getShopReviews } from "./shop-reviews.js";
 import {
   STAFF_ROLES, STAFF_MAX_LEVEL,
   getStaffLevel, getStaffHireCost,
@@ -56,6 +57,7 @@ let _tickInterval = null;
 let _onSale       = null;
 let _onAdPurchase = null;
 let _onCaravanEvent = null;
+let _emptyStockTicks = 0;
 
 // ─── HTML ЭКРАНА ──────────────────────────────────────────────────────────────
 
@@ -257,6 +259,16 @@ export function startShopTick() {
         addShopLogEntry(result);
       }
       _onSale?.(result);
+      _emptyStockTicks = 0;
+    } else if (getTotalOreInBank() <= 0) {
+      _emptyStockTicks += 1;
+      // Каждые ~15 секунд пустого склада — злой отзыв
+      if (_emptyStockTicks % 15 === 0) {
+        addShopReview(buildEmptyShopReview());
+        renderShopReviews();
+      }
+    } else {
+      _emptyStockTicks = 0;
     }
     const caravanTick = processCaravansTick();
     if (caravanTick?.results?.length) {
@@ -464,6 +476,22 @@ const MAX_EVENTS = 6;
 function renderEventsFeed() {
   const feedEl = document.getElementById("shop-events-feed");
   if (!feedEl) return;
+
+  // Если товара нет — очистить ленту, показать заглушку
+  if (getTotalOreInBank() <= 0) {
+    if (!feedEl.querySelector(".shop-event-empty")) {
+      feedEl.innerHTML = `
+        <div class="shop-event shop-event-empty">
+          <span class="shop-event-icon">🚫</span>
+          <span class="shop-event-text">Прилавки пусты — покупатели уходят ни с чем</span>
+        </div>`;
+    }
+    return;
+  }
+
+  // Убираем заглушку если товар появился
+  const placeholder = feedEl.querySelector(".shop-event-empty");
+  if (placeholder) placeholder.remove();
 
   const flow = getShopFlowState();
   const events = flow.lastTickEvents;
