@@ -974,6 +974,7 @@ let runToolInventory = {};
 let bgMusicStarted = false;
 let runPickaxeEffects = {};
 let runSecondWindUsed = false;
+let runShieldActive   = false;
 let mobileFlagMode = false;
 const bgMusic = new Audio(bgMusicSrc);
 bgMusic.loop = true;
@@ -1559,6 +1560,7 @@ function startGame(diffKey) {
   state.depthLevel = depthLevel;
   runPickaxeEffects = getEquippedPickaxeEffects();
   runSecondWindUsed = false;
+  runShieldActive   = false;
   mobileFlagMode = false;
   applyRunPassives();
   state.playerPos = { r: 14, c: 7 };
@@ -1775,50 +1777,22 @@ function useInstantTool(toolId) {
     return true;
   }
 
-  if (toolId === "magnet") {
-    const changed = [];
-    const oreByType = {
-      [ORE_COPPER]: 0,
-      [ORE_SILVER]: 0,
-      [ORE_GOLD]: 0,
-      [ORE_DIAMOND]: 0,
-    };
-    for (let r = 0; r < state.grid.length; r++) {
-      for (let c = 0; c < state.grid[r].length; c++) {
-        const cell = state.grid[r][c];
-        if (cell.type === TYPE_ORE && cell.state === CELL_REVEALED) {
-          const oreType = cell.oreType ?? ORE_COPPER;
-          cell.type = TYPE_EMPTY;
-          cell.state = CELL_OPEN;
-          oreByType[oreType] += 1;
-          changed.push({ r, c });
-          for (const [nr, nc] of getNeighbors(r, c)) {
-            if (state.grid[nr][nc].state === CELL_OPEN)
-              changed.push({ r: nr, c: nc });
-          }
-        }
-      }
-    }
-    const oreGain = Object.values(oreByType).reduce((s, v) => s + v, 0);
-    if (oreGain <= 0) {
-      setRunToolHint("🧲 Нет подсвеченной руды для сбора.");
+  if (toolId === "shield") {
+    if (runShieldActive) {
+      setRunToolHint("🛡 Щит уже активирован.");
       return false;
     }
     if (!consumeRunTool(toolId)) return false;
-    computeNeighborCounts(state.grid);
-    changed.push(...revealAdjacentOre(state.grid));
-    let totalGranted = 0;
-    Object.entries(oreByType).forEach(([oreType, amount]) => {
-      if (amount > 0) totalGranted += grantRunOre(oreType, amount);
-    });
-    applyToolGridChanges(changed, 0, 0);
-    updateStats((s) => {
-      s.cells.oreFoundCells += totalGranted;
-      s.resources.totalOreMined += totalGranted;
-      addXp(s, withRunXp(Math.max(1, Math.round(totalGranted * 0.8))));
-    });
-    setRunToolHint(`🧲 Магнит собрал ${totalGranted} руды.`);
-    animateMiner("pickup");
+    runShieldActive = true;
+    setRunToolHint("🛡 Щит активирован: следующий удар по нестабильной клетке не нанесёт урона.");
+    return true;
+  }
+
+  if (toolId === "coffee") {
+    if (!consumeRunTool(toolId)) return false;
+    state.lastActionTime = Date.now();
+    idleTriggered = false;
+    setRunToolHint("☕ Таймер AFK-обвала сброшен. Время пошло заново.");
     return true;
   }
 
@@ -1831,8 +1805,9 @@ function useTargetedTool(toolId, r, c) {
   const changed = [];
 
   if (toolId === "dynamite") {
-    for (let rr = r - 1; rr <= r + 1; rr++) {
-      for (let cc = c - 1; cc <= c + 1; cc++) {
+    // 5×5 area: r-2..r+2
+    for (let rr = r - 2; rr <= r + 2; rr++) {
+      for (let cc = c - 2; cc <= c + 2; cc++) {
         if (
           rr < 0 ||
           rr >= state.grid.length ||
@@ -1859,22 +1834,23 @@ function useTargetedTool(toolId, r, c) {
       }
     }
     if (!changed.length) {
-      setRunToolHint("💣 Здесь динамит ничего не изменил.");
+      setRunToolHint("💥 Здесь фугас ничего не изменил.");
       return false;
     }
     if (!consumeRunTool(toolId)) return false;
     changed.push(...revealAdjacentOre(state.grid));
     applyToolGridChanges(changed);
-    setRunToolHint("💣 Заряд сработал. Зона расчищена.");
+    setRunToolHint("💥 Фугас сработал. Зона 5×5 расчищена.");
     animateMiner("mining");
-    updateStats((s) => addXp(s, withRunXp(2)));
+    updateStats((s) => addXp(s, withRunXp(3)));
     return true;
   }
 
-  if (toolId === "flare") {
-    let oreShown = 0;
-    for (let rr = r - 2; rr <= r + 2; rr++) {
-      for (let cc = c - 2; cc <= c + 2; cc++) {
+  if (toolId === "detector") {
+    // 9×9 area: r-4..r+4 — помечает все нестабильные клетки флагом
+    let flagged = 0;
+    for (let rr = r - 4; rr <= r + 4; rr++) {
+      for (let cc = c - 4; cc <= c + 4; cc++) {
         if (
           rr < 0 ||
           rr >= state.grid.length ||
@@ -1883,48 +1859,24 @@ function useTargetedTool(toolId, r, c) {
         )
           continue;
         const cell = state.grid[rr][cc];
-        if (cell.type === TYPE_ORE && cell.state === CELL_HIDDEN) {
-          cell.state = CELL_REVEALED;
+        if (
+          cell.type === TYPE_UNSTABLE &&
+          cell.state !== CELL_OPEN &&
+          cell.state !== CELL_FLAGGED
+        ) {
+          cell.state = CELL_FLAGGED;
           changed.push({ r: rr, c: cc });
-          oreShown += 1;
+          flagged += 1;
         }
       }
     }
-    if (!consumeRunTool(toolId)) return false;
-    applyToolGridChanges(changed);
-    setRunToolHint(
-      oreShown > 0
-        ? `🔦 Подсвечено руды: ${oreShown}.`
-        : "🔦 Пустая область, руды не видно.",
-    );
-    updateStats((s) => addXp(s, withRunXp(1)));
-    return true;
-  }
-
-  if (toolId === "stabilizer") {
-    const cell = state.grid[r][c];
-    if (cell.type !== TYPE_UNSTABLE || cell.state === CELL_OPEN) {
-      setRunToolHint(
-        "🧯 Стабилизатор работает только по скрытой нестабильной клетке.",
-      );
+    if (!changed.length) {
+      setRunToolHint("📡 Нестабильных клеток в зоне 9×9 не обнаружено.");
       return false;
     }
     if (!consumeRunTool(toolId)) return false;
-    cell.type = TYPE_EMPTY;
-    cell.state = CELL_OPEN;
-    changed.push({ r, c });
-    computeNeighborCounts(state.grid);
-    changed.push(...revealAdjacentOre(state.grid));
-    for (const [nr, nc] of getNeighbors(r, c)) {
-      if (
-        state.grid[nr][nc].state === CELL_OPEN ||
-        state.grid[nr][nc].state === CELL_REVEALED
-      ) {
-        changed.push({ r: nr, c: nc });
-      }
-    }
     applyToolGridChanges(changed);
-    setRunToolHint("🧯 Клетка стабилизирована.");
+    setRunToolHint(`📡 Сканер обнаружил и пометил ${flagged} нестабильных клеток.`);
     updateStats((s) => addXp(s, withRunXp(2)));
     return true;
   }
@@ -2033,9 +1985,19 @@ gridEl.addEventListener("click", (e) => {
   const prevStates = state.grid.map((row) => row.map((cell) => cell.state));
 
   const prevOre = state.ore;
+  const prevHp  = state.hp;
   const result = openCell(state, clickR, clickC);
   if (!result) return;
   setMinerPosition(clickR, clickC);
+
+  // ─── ЩИТ: блокируем урон и обвал ──────────────────────────────────────────
+  if (runShieldActive && result.hitCollapse && result.hitCollapse.length > 0) {
+    state.hp = prevHp;                              // восстанавливаем HP
+    updateCells(state.grid, gridEl, result.hitCollapse); // синхронизируем сетку
+    result.hitCollapse = null;                      // отменяем обвальный блок
+    runShieldActive = false;
+    setRunToolHint("🛡 Щит поглотил удар! HP сохранён.");
+  }
 
   let gained = state.ore - prevOre;
   if (gained > 0) {
